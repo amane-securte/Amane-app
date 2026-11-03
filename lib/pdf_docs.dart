@@ -289,10 +289,13 @@ Future<void> printPayslip({
   required double hours,
   required int shifts,
   required double rate,
+  List<(String, double)> lines = const [],
 }) async {
   final doc = pw.Document(theme: await _theme());
   final lh = await _Letterhead.load();
   final amount = hours * rate;
+  final net = amount + lines.fold<double>(0, (s, l) => s + l.$2);
+  String signed(double v) => v < 0 ? '- ${_money(-v)}' : '+ ${_money(v)}';
   doc.addPage(lh.page([
     _refLine('FICHE DE PAIE', month),
     pw.Text('Agent', style: const pw.TextStyle(color: _grey)),
@@ -303,11 +306,15 @@ Future<void> printPayslip({
       ['Élément', 'Heures', 'Taux horaire', 'Montant'],
       [
         ['Heures de service ($shifts missions)', _h(hours), _money(rate), _money(amount)],
+        for (final l in lines) [l.$1, '', '', signed(l.$2)],
       ],
-      _money(amount),
+      lines.isEmpty ? _money(amount) : 'Net : ${_money(net)}',
     ),
     pw.SizedBox(height: 16),
-    pw.Text('Salaire brut calculé sur les heures pointées, avant cotisations et retenues.',
+    pw.Text(
+        lines.isEmpty
+            ? 'Salaire brut calculé sur les heures pointées, avant cotisations et retenues.'
+            : 'Net à payer = salaire des heures pointées + primes - avances - retenues - absences.',
         style: const pw.TextStyle(color: _grey, fontSize: 10)),
     pw.SizedBox(height: 40),
     pw.Row(

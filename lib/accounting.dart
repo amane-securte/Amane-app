@@ -73,15 +73,22 @@ class _AccountingTabState extends State<AccountingTab> {
                 .map((d) => PunchDoc(d.id, d.data()))
                 .where((p) => !p.open)
                 .toList();
-            return _body(ps, rates, pSnap.data?.docs ?? const []);
+            final adjs = (rSnap.data?.docs ?? const <QueryDocumentSnapshot<Map<String, dynamic>>>[])
+                .where((d) => d.data()['adj'] == true)
+                .map((d) => Adj(d.id, d.data()))
+                .where((a) => a.month == _monthKey)
+                .toList();
+            return _body(ps, rates, pSnap.data?.docs ?? const [], adjs);
           },
         );
       },
     );
   }
 
+  String get _monthKey => '${_month.year}-${two(_month.month)}';
+
   Widget _body(List<PunchDoc> ps, Map<String, double> rates,
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> raw) {
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> raw, List<Adj> adjs) {
     // siteId de chaque pointage (gardé dans le document brut).
     final siteOf = {for (final d in raw) d.id: d.data()['siteId'] as String? ?? ''};
 
@@ -101,16 +108,31 @@ class _AccountingTabState extends State<AccountingTab> {
     final nameFromPunch = {for (final p in ps) p.uid: p.name};
     final siteFromPunch = {for (final p in ps) (siteOf[p.id] ?? ''): p.siteName};
 
-    var payTotal = 0.0, hTotal = 0.0;
-    final payRows = byGuard.entries.map((e) {
-      final rate = rates['g_${e.key}'] ?? 0;
-      final amt = e.value * rate;
-      payTotal += amt;
-      hTotal += e.value;
-      return (e.key, userName[e.key] ?? nameFromPunch[e.key] ?? '—', e.value,
-          byGuardCount[e.key] ?? 0, rate, amt);
+    // Agents avec des heures ou des éléments de paie ce mois-ci.
+    final adjByGuard = <String, List<Adj>>{};
+    for (final a in adjs) {
+      (adjByGuard[a.uid] ??= []).add(a);
+    }
+    final payUids = {...byGuard.keys, ...adjByGuard.keys};
+    var payTotal = 0.0, hTotal = 0.0, netTotal = 0.0;
+    final payRows = payUids.map((uid) {
+      final h = byGuard[uid] ?? 0;
+      final rate = rates['g_$uid'] ?? 0;
+      final gross = h * rate;
+      final list = adjByGuard[uid] ?? const <Adj>[];
+      final net = gross + list.fold<double>(0, (s, a) => s + a.signed);
+      // Coût pour la société : l'avance n'est qu'un paiement anticipé.
+      final cost = gross +
+          list.where((a) => a.kind != 'advance').fold<double>(0, (s, a) => s + a.signed);
+      payTotal += cost;
+      netTotal += net;
+      hTotal += h;
+      final name = userName[uid] ??
+          nameFromPunch[uid] ??
+          (list.isNotEmpty ? list.first.name : '—');
+      return (uid, name, h, byGuardCount[uid] ?? 0, rate, gross, list, net);
     }).toList()
-      ..sort((a, b) => b.$6.compareTo(a.$6));
+      ..sort((a, b) => b.$8.compareTo(a.$8));
 
     var invTotal = 0.0;
     final invRows = bySite.entries.map((e) {
@@ -148,6 +170,7 @@ class _AccountingTabState extends State<AccountingTab> {
               children: [
                 _kv(t('total_invoiced'), '${money(invTotal)} MRU'),
                 _kv(t('total_salaries'), '${money(payTotal)} MRU'),
+                _kv(t('net_to_pay'), '${money(netTotal)} MRU'),
                 const Divider(),
                 _kv(t('margin'), '${money(margin)} MRU',
                     color: margin < 0 ? danger : okGreen, bold: true),
@@ -166,24 +189,33 @@ class _AccountingTabState extends State<AccountingTab> {
               child: ListTile(
                 title: Text(r.$2),
                 subtitle: Text(t('pay_line', {
-                  'h': hours(r.$3),
-                  'n': '${r.$4}',
-                  'r': money(r.$5),
-                })),
-                trailing: Text('${money(r.$6)} MRU',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                onTap: () => _rowActions(
-                  pdf: () => printPayslip(
+                      'h': hours(r.$3),
+                      'n': '${r.$4}',
+                      'r': money(r.$5),
+                    }) +
+                    (r.$7.isEmpty
+                        ? ''
+                        : '\n${t('gross')} ${money(r.$6)} · ${t('adj_count', {'n': '${r.$7.length}'})}')),
+                isThreeLine: r.$7.isNotEmpty,
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('${money(r.$8)} MRU',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: r.$8 < 0 ? danger : null)),
+                    Text(t('net'), style: const TextStyle(fontSize: 11, color: muted)),
+                  ],
+                ),
+                onTap: () => _payDetail(
+                    uid: r.$1,
                     name: r.$2,
-                    phone: widget.users.where((u) => u.id == r.$1).firstOrNull?.phone ?? '',
-                    month: '${two(_month.month)}/${_month.year}',
                     hours: r.$3,
                     shifts: r.$4,
                     rate: r.$5,
-                  ),
-                  rate: () => _editRate('g_${r.$1}', r.$2, r.$5, t('hourly_pay')),
-                  pdfLabel: t('pdf_payslip'),
-                ),
+                    gross: r.$6,
+                    adjs: r.$7),
               ),
             )),
         const SizedBox(height: 18),
@@ -259,6 +291,195 @@ class _AccountingTabState extends State<AccountingTab> {
         ),
       );
 
+  /// Fiche de paie d'un agent : brut, avances, retenues, absences, primes, net.
+  Future<void> _payDetail({
+    required String uid,
+    required String name,
+    required double hours,
+    required int shifts,
+    required double rate,
+    required double gross,
+    required List<Adj> adjs,
+  }) async {
+    final phone = widget.users.where((u) => u.id == uid).firstOrNull?.phone ?? '';
+    final net = gross + adjs.fold<double>(0, (s, a) => s + a.signed);
+    final v = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+              Text('${two(_month.month)}/${_month.year}', style: const TextStyle(color: muted)),
+              const SizedBox(height: 10),
+              _kv(t('gross'), '${money(gross)} MRU'),
+              Text(t('pay_line', {'h': hours.toStringAsFixed(1), 'n': '$shifts', 'r': money(rate)}),
+                  style: const TextStyle(color: muted, fontSize: 12)),
+              const Divider(),
+              if (adjs.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Text(t('no_adj'), style: const TextStyle(color: muted)),
+                ),
+              for (final a in adjs)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(adjIcon(a.kind), color: a.signed < 0 ? danger : okGreen),
+                  title: Text(t('adj_${a.kind}') + (a.note.isEmpty ? '' : ' · ${a.note}')),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ltrText('${a.signed < 0 ? '−' : '+'}${money(a.amount)}',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: a.signed < 0 ? danger : okGreen)),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                        onPressed: () => Navigator.pop(ctx, 'del:${a.id}'),
+                      ),
+                    ],
+                  ),
+                ),
+              const Divider(),
+              _kv(t('net_to_pay'), '${money(net)} MRU', color: net < 0 ? danger : okGreen, bold: true),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final k in adjKinds)
+                    ActionChip(
+                      avatar: Icon(adjIcon(k), size: 18),
+                      label: Text('+ ${t('adj_$k')}'),
+                      onPressed: () => Navigator.pop(ctx, 'add:$k'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(ctx, 'pdf'),
+                icon: const Icon(Icons.picture_as_pdf),
+                label: Text(t('pdf_payslip')),
+              ),
+              TextButton.icon(
+                onPressed: () => Navigator.pop(ctx, 'rate'),
+                icon: const Icon(Icons.edit),
+                label: Text(t('edit_rate')),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (v == null || !mounted) return;
+    if (v == 'pdf') {
+      try {
+        await printPayslip(
+          name: name,
+          phone: phone,
+          month: '${two(_month.month)}/${_month.year}',
+          hours: hours,
+          shifts: shifts,
+          rate: rate,
+          lines: [for (final a in adjs) (pdfAdjLabel(a), a.signed)],
+        );
+      } catch (e) {
+        if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+      }
+    } else if (v == 'rate') {
+      await _editRate('g_$uid', name, rate, t('hourly_pay'));
+    } else if (v.startsWith('del:')) {
+      await db.collection('rates').doc(v.substring(4)).delete();
+      if (mounted) snack(context, t('saved'), color: okGreen);
+    } else if (v.startsWith('add:')) {
+      await _addAdj(v.substring(4), uid, name, rate);
+    }
+  }
+
+  /// Ajoute une avance, une retenue, une absence ou une prime pour le mois affiché.
+  Future<void> _addAdj(String kind, String uid, String name, double rate) async {
+    final amount = TextEditingController();
+    final days = TextEditingController(text: '1');
+    final note = TextEditingController();
+    final absence = kind == 'absence';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${t('adj_$kind')} · $name'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (absence) ...[
+              TextField(
+                controller: days,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: t('absence_days')),
+              ),
+              const SizedBox(height: 6),
+              Text(t('absence_hint', {'r': money(rate)}),
+                  style: const TextStyle(color: muted, fontSize: 12)),
+            ] else
+              TextField(
+                controller: amount,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(labelText: t('amount_mru')),
+              ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: note,
+              decoration: InputDecoration(labelText: t('adj_note')),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t('save'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    double value;
+    var n = note.text.trim();
+    if (absence) {
+      final d = double.tryParse(days.text.replaceAll(',', '.').trim()) ?? 0;
+      if (d <= 0) return;
+      value = d * 12 * rate; // une journée de garde = 12 h
+      n = '${d % 1 == 0 ? d.toInt() : d} ${t('days')}${n.isEmpty ? '' : ' · $n'}';
+    } else {
+      value = double.tryParse(amount.text.replaceAll(',', '.').replaceAll(' ', '').trim()) ?? 0;
+    }
+    if (value <= 0) return;
+    // Rangé avec les taux : la collection est déjà réservée à l'administration.
+    await db.collection('rates').add({
+      'adj': true,
+      'kind': kind,
+      'uid': uid,
+      'name': name,
+      'month': _monthKey,
+      'amount': value.roundToDouble(),
+      'note': n,
+      'at': Timestamp.now(),
+    });
+    if (mounted) snack(context, t('saved'), color: okGreen);
+  }
+
+  String pdfAdjLabel(Adj a) {
+    const fr = {
+      'advance': 'Avance sur salaire',
+      'deduction': 'Retenue',
+      'absence': 'Absence',
+      'bonus': 'Prime',
+    };
+    return '${fr[a.kind] ?? a.kind}${a.note.isEmpty ? '' : ' – ${a.note}'}';
+  }
+
   Future<void> _rowActions({
     required Future<void> Function() pdf,
     required Future<void> Function() rate,
@@ -322,4 +543,30 @@ class _AccountingTabState extends State<AccountingTab> {
     await db.collection('rates').doc(key).set({'rate': v});
     if (mounted) snack(context, t('saved'), color: okGreen);
   }
+}
+
+/// Élément de paie du mois : avance, retenue, absence (retenue) ou prime.
+const adjKinds = ['advance', 'deduction', 'absence', 'bonus'];
+
+IconData adjIcon(String k) => switch (k) {
+      'advance' => Icons.payments,
+      'deduction' => Icons.remove_circle_outline,
+      'absence' => Icons.event_busy,
+      'bonus' => Icons.card_giftcard,
+      _ => Icons.circle,
+    };
+
+class Adj {
+  Adj(this.id, Map<String, dynamic> m)
+      : kind = m['kind'] is String ? m['kind'] as String : 'deduction',
+        uid = m['uid'] is String ? m['uid'] as String : '',
+        name = m['name'] is String ? m['name'] as String : '',
+        month = m['month'] is String ? m['month'] as String : '',
+        note = m['note'] is String ? m['note'] as String : '',
+        amount = m['amount'] is num ? (m['amount'] as num).toDouble() : 0;
+  final String id, kind, uid, name, month, note;
+  final double amount;
+
+  /// Positif pour une prime, négatif pour tout ce qui réduit le net.
+  double get signed => kind == 'bonus' ? amount : -amount;
 }
