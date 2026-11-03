@@ -57,9 +57,10 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk Amane.apk
           cp build/app/outputs/bundle/release/app-release.aab Amane-PlayStore.aab
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk Amane-telephone.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk Amane-32bit.apk
           ls -la *.apk *.aab
           gh release delete test-build --yes --cleanup-tag || true
-          gh release create test-build Amane-telephone.apk Amane.apk Amane-PlayStore.aab \
+          gh release create test-build Amane-32bit.apk Amane-telephone.apk Amane.apk Amane-PlayStore.aab \
             --prerelease \
             --title "Amane – نسخة تجريبية / version de test" \
             --notes "Build ${{ github.run_number }} – ${GITHUB_SHA::7}"
