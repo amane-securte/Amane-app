@@ -13,6 +13,7 @@ const warn = Color(0xFFB25A00);
 
 /// Numéro de réception des alertes SOS.
 const controlPhone = '+22226511010';
+const controlPhoneDisplay = '+222 26 51 10 10';
 
 ThemeData amaneTheme() {
   final scheme = ColorScheme.fromSeed(
