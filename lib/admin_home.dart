@@ -8,6 +8,7 @@ import 'accounting.dart';
 import 'emergency.dart';
 import 'guard_home.dart';
 import 'logbook.dart';
+import 'map_tab.dart';
 import 'planning.dart';
 import 'i18n.dart';
 import 'theme.dart';
@@ -50,7 +51,7 @@ class _AdminHomeState extends State<AdminHome> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 6,
+      length: 7,
       child: Scaffold(
         appBar: amaneAppBar(
           context,
@@ -64,6 +65,7 @@ class _AdminHomeState extends State<AdminHome> {
             tabs: [
               Tab(text: t('tab_live')),
               Tab(text: t('tab_mine')),
+              Tab(text: t('tab_map')),
               Tab(text: t('tab_plan')),
               Tab(text: t('tab_guards')),
               Tab(text: t('tab_sites')),
@@ -87,9 +89,12 @@ class _AdminHomeState extends State<AdminHome> {
                     .toList()
                   ..sort((a, b) => a.name.compareTo(b.name));
                 return TabBarView(
+                  // Pas de glissement entre onglets : la carte en a besoin.
+                  physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _liveTab(),
                     GuardHome(prefs: widget.prefs, me: widget.me, embedded: true),
+                    MapTab(t: t, sites: sites),
                     PlanningTab(t: t, guards: users, sites: sites),
                     _guardsTab(sites, users),
                     _sitesTab(sites),
