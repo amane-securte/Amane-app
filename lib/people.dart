@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
+import 'geo.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -89,6 +90,8 @@ Future<void> shareInvite(BuildContext context, T t,
 
 /// Crée le compte d'un agent ou d'un client depuis l'administration,
 /// sans déconnecter l'administrateur (instance Firebase secondaire).
+const _newSite = '__new__';
+
 Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
   final name = TextEditingController();
   final phone = TextEditingController();
@@ -96,6 +99,12 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
       text: '${100000 + math.Random.secure().nextInt(900000)}');
   var role = 'guard';
   String? siteId;
+  final siteName = TextEditingController();
+  // Nouveau site : position prise ici (« here ») ou plus tard (« later » ;
+  // pour un client, son téléphone la fournira à la première connexion).
+  var where = 'later';
+  Fix? here;
+  var locating = false;
   String? error;
   var busy = false;
 
@@ -112,6 +121,10 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
           }
           if (pw.length < 6) {
             setS(() => error = t('add_err_pass'));
+            return;
+          }
+          if (siteId == _newSite && where == 'here' && here == null) {
+            setS(() => error = t('add_err_here'));
             return;
           }
           setS(() {
@@ -137,11 +150,24 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
               'createdAt': Timestamp.now(),
             });
             await a2.signOut();
-            final s = sites.where((s) => s.id == siteId).firstOrNull;
+            String? sid = siteId;
+            String sName = sites.where((s) => s.id == siteId).firstOrNull?.name ?? '';
+            if (siteId == _newSite) {
+              sName = siteName.text.trim().isEmpty ? n : siteName.text.trim();
+              final ref = await db.collection('sites').add({
+                'name': sName,
+                'client': role == 'client' ? n : '',
+                'radius': 200,
+                'Lat': where == 'here' ? here?.lat : null,
+                'Lng': where == 'here' ? here?.lng : null,
+                if (where == 'later' && role == 'client') 'autoFrom': uid,
+              });
+              sid = ref.id;
+            }
             await db.collection('users').doc(uid).update({
               'role': role,
-              if (s != null) 'siteId': s.id,
-              if (s != null) 'siteName': s.name,
+              if (sid != null) 'siteId': sid,
+              if (sid != null) 'siteName': sName,
             });
             if (ctx.mounted) Navigator.pop(ctx, (p, pw));
           } on FirebaseAuthException catch (e) {
@@ -177,7 +203,10 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
                         label: Text(t('role_client'))),
                   ],
                   selected: {role},
-                  onSelectionChanged: (s) => setS(() => role = s.first),
+                  onSelectionChanged: (s) => setS(() {
+                    role = s.first;
+                    if (role == 'client' && siteId == null) siteId = _newSite;
+                  }),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -197,6 +226,7 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String?>(
+                  key: ValueKey('site-$role'),
                   initialValue: siteId,
                   isExpanded: true,
                   decoration: InputDecoration(labelText: t('choose_site')),
@@ -204,9 +234,62 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
                     const DropdownMenuItem(value: null, child: Text('—')),
                     for (final s in sites)
                       DropdownMenuItem(value: s.id, child: Text(s.name)),
+                    DropdownMenuItem(
+                        value: _newSite,
+                        child: Text(t('new_site'),
+                            style: const TextStyle(color: navy, fontWeight: FontWeight.w600))),
                   ],
                   onChanged: (v) => setS(() => siteId = v),
                 ),
+                if (siteId == _newSite) ...[
+                  TextField(
+                    controller: siteName,
+                    decoration: InputDecoration(
+                        labelText: t('site_name'),
+                        hintText: role == 'client' ? t('site_name_hint') : null),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8, runSpacing: 4, children: [
+                    ChoiceChip(
+                      avatar: const Icon(Icons.my_location, size: 18),
+                      label: Text(t('loc_here')),
+                      selected: where == 'here',
+                      onSelected: (_) => setS(() => where = 'here'),
+                    ),
+                    ChoiceChip(
+                      avatar: const Icon(Icons.schedule, size: 18),
+                      label: Text(t(role == 'client' ? 'loc_client' : 'loc_later')),
+                      selected: where == 'later',
+                      onSelected: (_) => setS(() => where = 'later'),
+                    ),
+                  ]),
+                  if (where == 'here' && here != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('📍 ±${here!.acc.round()} m',
+                          style: const TextStyle(color: okGreen)),
+                    ),
+                  if (where == 'here')
+                    OutlinedButton.icon(
+                      icon: locating
+                          ? const SizedBox(
+                              width: 16, height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.my_location),
+                      label: Text(t(here == null ? 'loc_take' : 'loc_retake')),
+                      onPressed: locating
+                          ? null
+                          : () async {
+                              setS(() => locating = true);
+                              final r = await getFix();
+                              setS(() {
+                                locating = false;
+                                here = r.fix ?? here;
+                                if (r.fix == null) error = t('add_err_gps');
+                              });
+                            },
+                    ),
+                ],
                 if (error != null) ...[
                   const SizedBox(height: 8),
                   Text(error!, style: const TextStyle(color: danger)),

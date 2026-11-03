@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +48,38 @@ class _AdminHomeState extends State<AdminHome> {
       .snapshots();
 
   final _seenAlerts = <String>{};
+  final _placed = <String>{};
+  StreamSubscription<QueryMap>? _placeSub;
+
+  @override
+  void dispose() {
+    _placeSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Reporte sur le site la position envoyée par le téléphone du client.
+    _placeSub = db.collection('users').snapshots().listen((q) async {
+      for (final d in q.docs) {
+        final m = d.data();
+        final sid = m['siteId'];
+        if (m['role'] != 'client' || sid is! String || m['homeLat'] is! num) continue;
+        if (!_placed.add(d.id)) continue;
+        try {
+          final site = await db.collection('sites').doc(sid).get();
+          final sm = site.data();
+          if (sm == null || sm['Lat'] is num || sm['autoFrom'] != d.id) continue;
+          await db.collection('sites').doc(sid).update({
+            'Lat': m['homeLat'],
+            'Lng': m['homeLng'],
+            'autoFrom': FieldValue.delete(),
+          });
+        } catch (_) {}
+      }
+    }, onError: (_) {});
+  }
   bool _alertsLoaded = false;
 
   T get t => T(widget.prefs.lang);

@@ -40,6 +40,33 @@ class _ClientHomeState extends State<ClientHome> {
   T get t => T(widget.prefs.lang);
   UserDoc get me => widget.me;
 
+  @override
+  void initState() {
+    super.initState();
+    _shareSiteLocation();
+  }
+
+  /// Site créé « automatiquement depuis le téléphone du client » : à la
+  /// première ouverture, on envoie la position du client ; l'administration
+  /// la reporte sur le site.
+  Future<void> _shareSiteLocation() async {
+    final sid = me.siteId;
+    if (sid == null) return;
+    try {
+      final site = await db.collection('sites').doc(sid).get();
+      final m = site.data();
+      if (m == null || m['Lat'] is num || m['autoFrom'] != me.id) return;
+      final r = await getFix(seconds: 25);
+      final f = r.fix;
+      if (f == null) return;
+      await db.collection('users').doc(me.id).update({
+        ...f.write('home'),
+        'homeAt': Timestamp.now(),
+      });
+      if (mounted) snack(context, t('loc_shared'), color: okGreen);
+    } catch (_) {}
+  }
+
   Future<void> _send() async {
     final need = await showModalBottomSheet<String>(
       context: context,

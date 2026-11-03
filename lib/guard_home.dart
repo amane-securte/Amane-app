@@ -74,9 +74,29 @@ class _GuardHomeState extends State<GuardHome> {
   }
 
   Future<void> _punch(PunchDoc? open, Site? site) async {
+    // ignore: parameter_assignments
     final r = await _locate();
     if (!mounted) return;
-    final (dist, ok) = checkSite(r.fix, site);
+    var (dist, ok) = checkSite(r.fix, site);
+    // Prise de service hors de son site habituel (ou sans site attribué) :
+    // on cherche automatiquement le site AMANE où se trouve l'agent.
+    var auto = false;
+    if (open == null && r.fix != null && ok != true) {
+      try {
+        final all = await db.collection('sites').get();
+        for (final d in all.docs) {
+          final s = Site(d.id, d.data());
+          final (dd, okk) = checkSite(r.fix, s);
+          if (okk == true && dd != null && (!auto || dd < dist!)) {
+            site = s;
+            dist = dd;
+            ok = true;
+            auto = true;
+          }
+        }
+      } catch (_) {}
+      if (!mounted) return;
+    }
     final p = open == null ? 'in' : 'out';
     final data = <String, dynamic>{
       '${p}At': Timestamp.now(),
@@ -92,6 +112,7 @@ class _GuardHomeState extends State<GuardHome> {
         'phone': me.phone,
         'siteId': site?.id,
         'siteName': site?.name ?? '',
+        if (auto) 'autoSite': true,
         ...data,
       });
     } else {
@@ -101,7 +122,10 @@ class _GuardHomeState extends State<GuardHome> {
       showGpsError(context, t, r.error!);
     } else {
       final (txt, col) = locInfo(t, r.fix, dist, ok);
-      snack(context, '${t(open == null ? 'saved_in' : 'saved_out')} · $txt',
+      snack(
+          context,
+          '${t(open == null ? 'saved_in' : 'saved_out')} · '
+          '${auto ? '${t('auto_site')} ${site?.name} · ' : ''}$txt',
           color: col);
     }
   }
