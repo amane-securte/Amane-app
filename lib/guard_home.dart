@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'data.dart';
 import 'geo.dart';
 import 'i18n.dart';
+import 'logbook.dart';
+import 'planning.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -21,6 +23,8 @@ class _GuardHomeState extends State<GuardHome> {
   bool _busy = false;
   late Stream<QueryMap> _punches;
   late Stream<DocumentSnapshotMap?> _site;
+  late final Stream<QueryMap> _shifts =
+      db.collection('shifts').where('uid', isEqualTo: me.id).snapshots();
 
   T get t => T(widget.prefs.lang);
   UserDoc get me => widget.me;
@@ -244,6 +248,20 @@ class _GuardHomeState extends State<GuardHome> {
             icon: const Icon(Icons.phone),
             label: Text(t('call_control')),
           ),
+        ),
+        const SizedBox(height: 28),
+        MyShifts(t: t, stream: _shifts),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  LogbookScreen(t: t, me: me, siteName: site?.name ?? ''),
+            ),
+          ),
+          icon: const Icon(Icons.menu_book),
+          label: Text(t('open_logbook')),
         ),
         const SizedBox(height: 28),
         Text(t('history'),

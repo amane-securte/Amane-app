@@ -48,6 +48,24 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Planning : chaque agent voit ses missions, l'administration les gère.
+    match /shifts/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // Main courante : l'agent écrit, l'administration lit tout.
+    match /logs/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Taux (salaires, tarifs) : réservés à l'administration.
+    match /rates/{id} {
+      allow read, write: if isAdmin();
+    }
+
     // Alertes SOS : tout compte connecté peut en envoyer, l'administration les traite.
     match /alerts/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);

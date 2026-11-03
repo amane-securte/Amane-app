@@ -4,7 +4,10 @@ import 'package:flutter/services.dart';
 
 import 'data.dart';
 import 'geo.dart';
+import 'accounting.dart';
 import 'guard_home.dart';
+import 'logbook.dart';
+import 'planning.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -31,6 +34,12 @@ class _AdminHomeState extends State<AdminHome> {
       .snapshots();
   late final Stream<QueryMap> _users = db.collection('users').snapshots();
   late final Stream<QueryMap> _sites = db.collection('sites').snapshots();
+  late final Stream<QueryMap> _logs = db
+      .collection('logs')
+      .where('at',
+          isGreaterThan: Timestamp.fromDate(
+              DateTime.now().subtract(const Duration(hours: 24))))
+      .snapshots();
 
   final _seenAlerts = <String>{};
   bool _alertsLoaded = false;
@@ -40,19 +49,23 @@ class _AdminHomeState extends State<AdminHome> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 5,
       child: Scaffold(
         appBar: amaneAppBar(
           context,
           widget.prefs,
           bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             labelColor: const Color(0xFFD1A850),
             unselectedLabelColor: const Color(0xFFB8C2CC),
             indicatorColor: const Color(0xFFD1A850),
             tabs: [
               Tab(text: t('tab_live')),
+              Tab(text: t('tab_plan')),
               Tab(text: t('tab_guards')),
               Tab(text: t('tab_sites')),
+              Tab(text: t('tab_acc')),
             ],
           ),
         ),
@@ -63,12 +76,24 @@ class _AdminHomeState extends State<AdminHome> {
                 .map((d) => Site(d.id, d.data()))
                 .toList()
               ..sort((a, b) => a.name.compareTo(b.name));
-            return TabBarView(
-              children: [
-                _liveTab(),
-                _guardsTab(sites),
-                _sitesTab(sites),
-              ],
+            return StreamBuilder<QueryMap>(
+              stream: _users,
+              builder: (context, uSnap) {
+                final users = (uSnap.data?.docs ?? const [])
+                    .map((d) => UserDoc(d.id, d.data()))
+                    .where((u) => u.id != widget.me.id)
+                    .toList()
+                  ..sort((a, b) => a.name.compareTo(b.name));
+                return TabBarView(
+                  children: [
+                    _liveTab(),
+                    PlanningTab(t: t, guards: users, sites: sites),
+                    _guardsTab(sites, users),
+                    _sitesTab(sites),
+                    AccountingTab(t: t, users: users, sites: sites),
+                  ],
+                );
+              },
             );
           },
         ),
@@ -110,6 +135,21 @@ class _AdminHomeState extends State<AdminHome> {
                   _empty(t('none_on_duty'))
                 else
                   ...onDuty.map((p) => PunchTile(t: t, p: p)),
+                const SizedBox(height: 20),
+                _h(t('logs_24h')),
+                StreamBuilder<QueryMap>(
+                  stream: _logs,
+                  builder: (context, lSnap) {
+                    final logs = (lSnap.data?.docs ?? const [])
+                        .map((d) => LogDoc(d.id, d.data()))
+                        .toList()
+                      ..sort((a, b) => b.at.compareTo(a.at));
+                    if (logs.isEmpty) return _empty(t('no_logs'));
+                    return Column(
+                        children:
+                            logs.map((l) => LogTile(t: t, l: l)).toList());
+                  },
+                ),
                 const SizedBox(height: 20),
                 _h(t('recent')),
                 if (recent.isEmpty)
@@ -219,15 +259,9 @@ class _AdminHomeState extends State<AdminHome> {
 
   // ---------------------------------------------------------------- Agents
 
-  Widget _guardsTab(List<Site> sites) {
-    return StreamBuilder<QueryMap>(
-      stream: _users,
-      builder: (context, snap) {
-        final users = (snap.data?.docs ?? const [])
-            .map((d) => UserDoc(d.id, d.data()))
-            .where((u) => u.id != widget.me.id)
-            .toList()
-          ..sort((a, b) => a.name.compareTo(b.name));
+  Widget _guardsTab(List<Site> sites, List<UserDoc> users) {
+    return Builder(
+      builder: (context) {
         final pending = users.where((u) => u.role == 'pending').toList();
         final others = users.where((u) => u.role != 'pending').toList();
         final siteName = {for (final s in sites) s.id: s.name};
