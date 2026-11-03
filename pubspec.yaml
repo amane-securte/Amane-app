@@ -1,0 +1,31 @@
+name: amane_app
+description: "Application AMANE Sécurité privée – أمان للأمن الخصوصي"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  geolocator: any
+  url_launcher: any
+  shared_preferences: any
+
+dev_dependencies:
+  flutter_lints: any
+  flutter_launcher_icons: any
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icon.png
+  min_sdk_android: 21
