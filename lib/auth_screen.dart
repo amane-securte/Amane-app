@@ -79,9 +79,31 @@ class _AuthScreenState extends State<AuthScreen> {
             email: email, password: _pass.text);
       }
     } catch (e) {
-      if (mounted) snack(context, _err(e), color: danger);
+      if (mounted) {
+        snack(context, _err(e), color: danger);
+        // Compte déjà existant : on bascule tout seul sur « Connexion ».
+        if (e is FirebaseAuthException && e.code == 'email-already-in-use') {
+          setState(() => _signup = false);
+        }
+      }
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  /// Envoie un lien de réinitialisation à une vraie adresse e-mail.
+  /// Les agents (connexion par téléphone) passent par l'administration.
+  Future<void> _forgot() async {
+    final id = _id.text.trim();
+    if (!id.contains('@')) {
+      snack(context, t('forgot_phone'), color: warn);
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: loginEmail(id));
+      if (mounted) snack(context, t('forgot_sent', {'e': id}), color: okGreen);
+    } catch (e) {
+      if (mounted) snack(context, _err(e), color: danger);
+    }
   }
 
   String? _req(String? v) =>
@@ -98,7 +120,7 @@ class _AuthScreenState extends State<AuthScreen> {
             padding: const EdgeInsets.all(20),
             children: [
               const SizedBox(height: 8),
-              Center(child: Image.asset('assets/logo_full.png', height: 210)),
+              Center(child: Image.asset('assets/logo_full_t.png', height: 210)),
               const SizedBox(height: 20),
               SegmentedButton<bool>(
                 segments: [
@@ -156,6 +178,11 @@ class _AuthScreenState extends State<AuthScreen> {
                           style: const TextStyle(fontSize: 17)),
                 ),
               ),
+              if (!_signup)
+                TextButton(
+                  onPressed: _busy ? null : _forgot,
+                  child: Text(t('forgot')),
+                ),
             ],
           ),
         ),

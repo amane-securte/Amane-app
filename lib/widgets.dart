@@ -17,7 +17,7 @@ class LoadingScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset('assets/logo_full.png', height: 220),
+              Image.asset('assets/logo_full_t.png', height: 220),
               const SizedBox(height: 24),
               const CircularProgressIndicator(color: gold),
             ],
@@ -55,6 +55,12 @@ PreferredSizeWidget amaneAppBar(BuildContext context, Prefs prefs,
         child: Text(t('lang_btn'),
             style: const TextStyle(color: Color(0xFFFBF6EA))),
       ),
+      if (showLogout && FirebaseAuth.instance.currentUser != null)
+        IconButton(
+          tooltip: t('change_pass'),
+          icon: const Icon(Icons.key),
+          onPressed: () => changePassword(context, t),
+        ),
       if (showLogout && FirebaseAuth.instance.currentUser != null)
         IconButton(
           tooltip: t('logout'),
@@ -128,3 +134,39 @@ Widget ltrText(String s, {TextStyle? style}) => Directionality(
       textDirection: TextDirection.ltr,
       child: Text(s, style: style),
     );
+
+/// Changer son mot de passe (le compte doit être connecté depuis peu).
+Future<void> changePassword(BuildContext context, T t) async {
+  final c1 = TextEditingController(), c2 = TextEditingController();
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(t('change_pass')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: c1, obscureText: true,
+              decoration: InputDecoration(labelText: t('new_pass'))),
+          const SizedBox(height: 10),
+          TextField(controller: c2, obscureText: true,
+              decoration: InputDecoration(labelText: t('new_pass2'))),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('cancel'))),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t('save'))),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  if (c1.text.length < 6) { snack(context, t('err_weak'), color: danger); return; }
+  if (c1.text != c2.text) { snack(context, t('pass_mismatch'), color: danger); return; }
+  try {
+    await FirebaseAuth.instance.currentUser?.updatePassword(c1.text);
+    if (context.mounted) snack(context, t('pass_changed'), color: okGreen);
+  } on FirebaseAuthException catch (e) {
+    if (!context.mounted) return;
+    snack(context, e.code == 'requires-recent-login' ? t('relogin') : t('err_generic', {'e': e.code}),
+        color: danger);
+  }
+}

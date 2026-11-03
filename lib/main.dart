@@ -67,6 +67,10 @@ class RoleGate extends StatelessWidget {
     return StreamBuilder<DocumentSnapshotMap>(
       stream: db.collection('users').doc(user.uid).snapshots(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          // Le plus souvent : règles Firestore pas encore publiées.
+          return PendingScreen(prefs: prefs, disabled: false, error: '${snap.error}');
+        }
         if (!snap.hasData) return const LoadingScreen();
         final doc = snap.data!;
         final me = UserDoc(user.uid, doc.data() ?? const {});
@@ -91,9 +95,11 @@ class RoleGate extends StatelessWidget {
 }
 
 class PendingScreen extends StatelessWidget {
-  const PendingScreen({super.key, required this.prefs, required this.disabled});
+  const PendingScreen(
+      {super.key, required this.prefs, required this.disabled, this.error});
   final Prefs prefs;
   final bool disabled;
+  final String? error;
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +119,16 @@ class PendingScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w600)),
-              if (!disabled) ...[
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(t('db_error'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: danger)),
+                const SizedBox(height: 6),
+                Text(error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: muted, fontSize: 11)),
+              ] else if (!disabled) ...[
                 const SizedBox(height: 8),
                 Text(t('pending_sub'),
                     textAlign: TextAlign.center,
