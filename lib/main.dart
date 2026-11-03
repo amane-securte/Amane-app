@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'admin_home.dart';
 import 'auth_screen.dart';
+import 'client_home.dart';
 import 'data.dart';
 import 'guard_home.dart';
 import 'i18n.dart';
@@ -88,6 +89,7 @@ class RoleGate extends StatelessWidget {
           return AdminHome(prefs: prefs, me: me);
         }
         if (me.role == 'guard') return GuardHome(prefs: prefs, me: me);
+        if (me.role == 'client') return ClientHome(prefs: prefs, me: me);
         return PendingScreen(prefs: prefs, disabled: me.role == 'disabled');
       },
     );

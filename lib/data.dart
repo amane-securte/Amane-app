@@ -43,8 +43,9 @@ class UserDoc {
       : name = _str(m['name']),
         phone = _str(m['phone']),
         role = _str(m['role']).isEmpty ? 'pending' : _str(m['role']),
+        siteName = _str(m['siteName']),
         siteId = m['siteId'] is String ? m['siteId'] as String : null;
-  final String id, name, phone, role;
+  final String id, name, phone, role, siteName;
   final String? siteId;
 }
 
@@ -95,9 +96,13 @@ class AlertDoc {
         siteName = _str(m['siteName']),
         type = _str(m['type']),
         status = _str(m['status']),
+        source = _str(m['source']).isEmpty ? 'guard' : _str(m['source']),
+        action = _str(m['action']),
+        note = _str(m['note']),
         at = _date(m['at']) ?? DateTime.now(),
         fix = Fix.read(m, '');
-  final String id, uid, name, phone, siteName, type, status;
+  final String id, uid, name, phone, siteName, type, status, source, action, note;
+  bool get fromClient => source == 'client';
   final DateTime at;
   final Fix? fix;
 }

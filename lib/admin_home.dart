@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'data.dart';
 import 'geo.dart';
 import 'accounting.dart';
+import 'client_home.dart';
 import 'guard_home.dart';
 import 'logbook.dart';
 import 'planning.dart';
@@ -203,8 +204,12 @@ class _AdminHomeState extends State<AdminHome> {
               children: [
                 const Icon(Icons.warning_amber_rounded, color: danger),
                 const SizedBox(width: 6),
+                if (a.fromClient) ...[
+                  pill(t('from_client'), navy),
+                  const SizedBox(width: 6),
+                ],
                 Expanded(
-                  child: Text('${t('ty_${a.type}')} · ${a.siteName}',
+                  child: Text('${t(a.fromClient ? 'need_${a.type}' : 'ty_${a.type}')} · ${a.siteName}',
                       style: const TextStyle(
                           fontWeight: FontWeight.w700, fontSize: 16)),
                 ),
@@ -219,6 +224,16 @@ class _AdminHomeState extends State<AdminHome> {
                     style: const TextStyle(color: muted)),
               ],
             ),
+            if (a.note.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('« ${a.note} »', style: const TextStyle(fontStyle: FontStyle.italic)),
+              ),
+            if (a.action.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: pill(t('act_${a.action}'), okGreen),
+              ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
@@ -244,6 +259,27 @@ class _AdminHomeState extends State<AdminHome> {
                         .update({'status': 'taken', 'takenAt': Timestamp.now()}),
                     child: Text(t('take')),
                   ),
+                // Réponse : patrouille AMANE ou services publics.
+                PopupMenuButton<String>(
+                  tooltip: t('respond'),
+                  onSelected: (act) async {
+                    await db.collection('alerts').doc(a.id).update({
+                      'action': act,
+                      'status': 'taken',
+                      'actionAt': Timestamp.now(),
+                    });
+                    if (act == 'police') await openUrl('tel:17');
+                    if (act == 'civil' || act == 'ambulance') await openUrl('tel:18');
+                  },
+                  itemBuilder: (_) => [
+                    for (final act in ['patrol', 'police', 'civil', 'ambulance'])
+                      PopupMenuItem(value: act, child: Text(t('act_${act}_menu'))),
+                  ],
+                  child: Chip(
+                    avatar: const Icon(Icons.campaign, size: 18, color: navy),
+                    label: Text(t('respond')),
+                  ),
+                ),
                 TextButton(
                   onPressed: () => db
                       .collection('alerts')
@@ -332,6 +368,7 @@ class _AdminHomeState extends State<AdminHome> {
         child: Icon(
           switch (role) {
             'admin' => Icons.admin_panel_settings,
+            'client' => Icons.storefront,
             'disabled' => Icons.block,
             _ => Icons.badge,
           },
@@ -362,6 +399,27 @@ class _AdminHomeState extends State<AdminHome> {
   /// Choisit le site d'un agent (et le valide si c'est une demande).
   Future<void> _assign(UserDoc u, List<Site> sites,
       {bool approve = false}) async {
+    var role = u.role;
+    if (approve) {
+      final r = await showDialog<String>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: Text('${t('approve_as')} · ${u.name}'),
+          children: [
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, 'guard'),
+              child: ListTile(leading: const Icon(Icons.badge), title: Text(t('role_guard'))),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, 'client'),
+              child: ListTile(leading: const Icon(Icons.storefront), title: Text(t('role_client'))),
+            ),
+          ],
+        ),
+      );
+      if (r == null || !mounted) return;
+      role = r;
+    }
     final picked = await showDialog<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -381,9 +439,11 @@ class _AdminHomeState extends State<AdminHome> {
       ),
     );
     if (picked == null) return;
+    final sName = sites.where((s) => s.id == picked).firstOrNull?.name ?? '';
     await db.collection('users').doc(u.id).update({
       'siteId': picked,
-      if (approve) 'role': 'guard',
+      'siteName': sName,
+      if (approve) 'role': role,
     });
   }
 
