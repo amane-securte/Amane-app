@@ -10,6 +10,7 @@ import 'client_home.dart';
 import 'data.dart';
 import 'guard_home.dart';
 import 'i18n.dart';
+import 'push.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -84,6 +85,9 @@ class RoleGate extends StatelessWidget {
             'createdAt': Timestamp.now(),
           });
           return const LoadingScreen();
+        }
+        if (doc.exists && me.role != 'pending' && me.role != 'disabled') {
+          Push.register(user.uid);
         }
         if (isOwner || me.role == 'admin') {
           return AdminHome(prefs: prefs, me: me);

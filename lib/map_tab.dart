@@ -52,7 +52,7 @@ class _MapTabState extends State<MapTab> {
           builder: (context, pSnap) {
             final onDuty = (pSnap.data?.docs ?? const [])
                 .map((d) => PunchDoc(d.id, d.data()))
-                .where((p) => p.open && p.inFix != null)
+                .where((p) => p.open && p.bestFix != null)
                 .toList();
             final sites = widget.sites.where((s) => s.fix != null).toList();
             final markers = <Marker>[
@@ -61,14 +61,15 @@ class _MapTabState extends State<MapTab> {
                     () => _sheet(s.name, t('legend_site'), s.fix!, null)),
               for (final p in onDuty)
                 _marker(
-                    _ll(p.inFix!),
+                    _ll(p.bestFix!),
                     Icons.person_pin_circle,
                     p.inOk == false ? warn : okGreen,
                     40,
                     () => _sheet(
                         p.name,
-                        '${p.siteName} · ${t('status_on', {'t': hm(p.inAt)})}',
-                        p.inFix!,
+                        '${p.siteName} · ${t('status_on', {'t': hm(p.inAt)})}'
+                            '${p.lastAt == null ? '' : ' · ${t('last_seen', {'t': hm(p.lastAt!)})}'}',
+                        p.bestFix!,
                         p.phone)),
               for (final a in alerts)
                 _marker(

@@ -73,8 +73,16 @@ class PunchDoc {
         outAt = _date(m['outAt']),
         outFix = Fix.read(m, 'out'),
         outDist = m['outDist'] is num ? (m['outDist'] as num).toDouble() : null,
-        outOk = m['outOk'] is bool ? m['outOk'] as bool : null;
+        outOk = m['outOk'] is bool ? m['outOk'] as bool : null,
+        lastFix = Fix.read(m, 'last'),
+        lastAt = _date(m['lastAt']);
   final String id, uid, name, phone, siteName;
+  /// Dernière position transmise pendant la mission (suivi continu).
+  final Fix? lastFix;
+  final DateTime? lastAt;
+
+  /// Position la plus récente connue : suivi, sinon pointage d'arrivée.
+  Fix? get bestFix => lastFix ?? inFix;
   final DateTime inAt;
   final Fix? inFix;
   final double? inDist;

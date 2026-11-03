@@ -7,6 +7,7 @@ import 'emergency.dart';
 import 'i18n.dart';
 import 'logbook.dart';
 import 'planning.dart';
+import 'tracking.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -60,6 +61,16 @@ class _GuardHomeState extends State<GuardHome> {
     final r = await getFix(seconds: seconds);
     if (mounted) setState(() => _busy = false);
     return r;
+  }
+
+  /// Le suivi suit l'état du pointage : actif pendant la mission seulement.
+  void _syncTracking(PunchDoc? open) {
+    final tr = ShiftTracker.instance;
+    if (open != null) {
+      tr.start(open.id, title: t('track_title'), text: t('track_text'));
+    } else if (tr.running) {
+      tr.stop();
+    }
   }
 
   Future<void> _punch(PunchDoc? open, Site? site) async {
@@ -180,6 +191,7 @@ class _GuardHomeState extends State<GuardHome> {
                   ..sort((a, b) => b.inAt.compareTo(a.inAt));
                 final open = all.where((p) => p.open).firstOrNull;
                 final done = all.where((p) => !p.open).take(15).toList();
+                _syncTracking(open);
                 return _body(site, open, done);
               },
             );

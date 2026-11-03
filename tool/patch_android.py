@@ -13,6 +13,10 @@ perms = (
     '    <uses-permission android:name="android.permission.INTERNET"/>\n'
     '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n'
     '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n'
+    '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n'
+    '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>\n'
+    '    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n'
+    '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n'
 )
 if "ACCESS_FINE_LOCATION" not in s:
     s = re.sub(r"(<manifest[^>]*>\s*\n)", lambda m: m.group(1) + perms, s, count=1)

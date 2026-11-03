@@ -184,14 +184,87 @@ class _AdminHomeState extends State<AdminHome> {
         .toList();
     _seenAlerts.addAll(alerts.map((a) => a.id));
     if (_alertsLoaded && fresh.isNotEmpty) {
-      HapticFeedback.heavyImpact();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        final a = fresh.first;
-        snack(context, 'SOS · ${t('ty_${a.type}')} · ${a.name}', color: danger);
+        _alarm(fresh.first);
       });
     }
     _alertsLoaded = true;
+  }
+
+  bool _alarmOpen = false;
+
+  /// Alarme plein écran : son et vibration répétés jusqu'à ce que
+  /// l'administrateur réagisse.
+  Future<void> _alarm(AlertDoc a) async {
+    if (_alarmOpen) return;
+    _alarmOpen = true;
+    var ringing = true;
+    () async {
+      while (ringing && mounted) {
+        HapticFeedback.heavyImpact();
+        SystemSound.play(SystemSoundType.alert);
+        await Future.delayed(const Duration(milliseconds: 900));
+      }
+    }();
+    final f = a.fix;
+    final kind = t(a.fromClient ? 'need_${a.type}' : 'ty_${a.type}');
+    final go = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFFFBE9E7),
+        icon: const Icon(Icons.warning_rounded, color: danger, size: 56),
+        title: Text('SOS · $kind',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: danger, fontWeight: FontWeight.w800)),
+        content: Text(
+          [
+            a.name,
+            if (a.siteName.isNotEmpty) a.siteName,
+            if (a.fromClient) t('from_client'),
+            '${dm(a.at)} ${hm(a.at)}',
+          ].join('\n'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 16),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          if (f != null)
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(ctx, 'map'),
+              icon: const Icon(Icons.map),
+              label: Text(t('map')),
+            ),
+          if (a.phone.isNotEmpty)
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: okGreen),
+              onPressed: () => Navigator.pop(ctx, 'call'),
+              icon: const Icon(Icons.phone),
+              label: Text(t('call')),
+            ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: danger),
+            onPressed: () => Navigator.pop(ctx, 'take'),
+            child: Text(t('take')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(t('alarm_silence')),
+          ),
+        ],
+      ),
+    );
+    ringing = false;
+    _alarmOpen = false;
+    if (go == 'take' || go == 'call' || go == 'map') {
+      await db
+          .collection('alerts')
+          .doc(a.id)
+          .update({'status': 'taken', 'takenAt': Timestamp.now()});
+    }
+    if (go == 'map' && f != null) await openUrl(f.mapUrl);
+    if (go == 'call') await openUrl('tel:${a.phone}');
   }
 
   Widget _alertCard(AlertDoc a) {

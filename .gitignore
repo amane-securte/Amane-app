@@ -8,3 +8,4 @@ build/
 android/
 ios/
 pubspec.lock
+functions/node_modules/
