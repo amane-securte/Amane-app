@@ -256,6 +256,17 @@ class _GuardHomeState extends State<GuardHome> {
             label: Text(t('call_control')),
           ),
         ),
+        const SizedBox(height: 12),
+        // Les trois numéros les plus importants, en un geste.
+        Row(
+          children: [
+            _quickCall(Icons.local_police, '117', t('quick_police'), const Color(0xFF1F4E99)),
+            const SizedBox(width: 8),
+            _quickCall(Icons.local_fire_department, '118', t('quick_fire'), danger),
+            const SizedBox(width: 8),
+            _quickCall(Icons.security, '116', t('quick_gendarmerie'), const Color(0xFF2E5E3A)),
+          ],
+        ),
         const SizedBox(height: 8),
         Center(child: emergencyButton(context, t)),
         const SizedBox(height: 28),
@@ -283,6 +294,27 @@ class _GuardHomeState extends State<GuardHome> {
       ],
     );
   }
+
+  Widget _quickCall(IconData icon, String number, String label, Color color) =>
+      Expanded(
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: color,
+            side: BorderSide(color: color, width: 1.5),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+          ),
+          onPressed: () => openUrl('tel:$number'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon),
+              Text(number,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              Text(label, style: const TextStyle(fontSize: 11), textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      );
 
   Widget _statusCard(Site? site, PunchDoc? open) {
     return Card(
