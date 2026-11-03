@@ -17,6 +17,9 @@ service cloud.firestore {
     }
     function isAdmin() { return isOwner() || (hasProfile() && profile().role == 'admin'); }
     function isGuard() { return hasProfile() && profile().role in ['guard', 'admin']; }
+    function isClient() { return hasProfile() && profile().role == 'client'; }
+    // Le client ne voit que les données de son propre site.
+    function mySite(data) { return isClient() && data.siteId == profile().siteId; }
 
     // Comptes : chacun voit le sien, l'administration voit et gère tout.
     match /users/{uid} {
@@ -34,13 +37,14 @@ service cloud.firestore {
 
     // Sites : lus par les agents, gérés par l'administration.
     match /sites/{id} {
-      allow read: if isGuard();
+      allow read: if isGuard() || (isClient() && id == profile().siteId);
       allow write: if isAdmin();
     }
 
     // Pointages : chaque agent écrit et lit les siens.
     match /punches/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
+        || mySite(resource.data);
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
       allow update: if isAdmin()
         || (isGuard() && resource.data.uid == request.auth.uid
@@ -50,13 +54,15 @@ service cloud.firestore {
 
     // Planning : chaque agent voit ses missions, l'administration les gère.
     match /shifts/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
+        || mySite(resource.data);
       allow write: if isAdmin();
     }
 
     // Main courante : l'agent écrit, l'administration lit tout.
     match /logs/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
+        || mySite(resource.data);
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
@@ -64,6 +70,12 @@ service cloud.firestore {
     // Taux (salaires, tarifs) : réservés à l'administration.
     match /rates/{id} {
       allow read, write: if isAdmin();
+    }
+
+    // Factures envoyées au client : lecture par le client du site concerné.
+    match /invoices/{id} {
+      allow read: if isAdmin() || mySite(resource.data);
+      allow write: if isAdmin();
     }
 
     // Alertes SOS : tout compte connecté peut en envoyer, l'administration les traite.

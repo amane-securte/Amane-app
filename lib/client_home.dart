@@ -5,6 +5,7 @@ import 'data.dart';
 import 'emergency.dart';
 import 'geo.dart';
 import 'i18n.dart';
+import 'client_site.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -118,9 +119,36 @@ class _ClientHomeState extends State<ClientHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: amaneAppBar(context, widget.prefs),
-      body: SafeArea(
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: amaneAppBar(
+          context,
+          widget.prefs,
+          bottom: TabBar(
+            labelColor: const Color(0xFFD1A850),
+            unselectedLabelColor: const Color(0xFFB8C2CC),
+            indicatorColor: const Color(0xFFD1A850),
+            tabs: [
+              Tab(text: t('ctab_sos')),
+              Tab(text: t('ctab_site')),
+              Tab(text: t('ctab_invoices')),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _sosTab(),
+            ClientSiteTab(t: t, me: me),
+            ClientInvoicesTab(t: t, me: me),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sosTab() {
+    return SafeArea(
         child: StreamBuilder<QueryMap>(
           stream: _mine,
           builder: (context, snap) {
@@ -198,8 +226,7 @@ class _ClientHomeState extends State<ClientHome> {
             );
           },
         ),
-      ),
-    );
+      );
   }
 
   Widget _callButton(IconData icon, String label, String url, Color color) => Padding(

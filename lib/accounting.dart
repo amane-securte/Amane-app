@@ -243,6 +243,21 @@ class _AccountingTabState extends State<AccountingTab> {
                 ),
                 rate: () => _editRate('s_${r.$1}', r.$2, r.$4, t('billing_rate')),
                 pdfLabel: t('pdf_invoice'),
+                send: () async {
+                  final site = widget.sites.where((s) => s.id == r.$1).firstOrNull;
+                  await db.collection('invoices').doc(no).set({
+                    'siteId': r.$1,
+                    'siteName': r.$2,
+                    'client': site?.client ?? '',
+                    'number': no,
+                    'month': '${two(_month.month)}/${_month.year}',
+                    'hours': double.parse(r.$3.toStringAsFixed(1)),
+                    'rate': r.$4,
+                    'amount': (r.$3 * r.$4).roundToDouble(),
+                    'sentAt': Timestamp.now(),
+                  });
+                  if (mounted) snack(context, t('invoice_sent'), color: okGreen);
+                },
               ),
             ),
           );
@@ -484,6 +499,7 @@ class _AccountingTabState extends State<AccountingTab> {
     required Future<void> Function() pdf,
     required Future<void> Function() rate,
     required String pdfLabel,
+    Future<void> Function()? send,
   }) async {
     final v = await showModalBottomSheet<String>(
       context: context,
@@ -497,6 +513,13 @@ class _AccountingTabState extends State<AccountingTab> {
               title: Text(pdfLabel),
               onTap: () => Navigator.pop(ctx, 'pdf'),
             ),
+            if (send != null)
+              ListTile(
+                leading: const Icon(Icons.send, color: navy),
+                title: Text(t('send_invoice')),
+                subtitle: Text(t('send_invoice_sub')),
+                onTap: () => Navigator.pop(ctx, 'send'),
+              ),
             ListTile(
               leading: const Icon(Icons.edit),
               title: Text(t('edit_rate')),
@@ -514,6 +537,12 @@ class _AccountingTabState extends State<AccountingTab> {
       }
     } else if (v == 'rate') {
       await rate();
+    } else if (v == 'send' && send != null) {
+      try {
+        await send();
+      } catch (e) {
+        if (mounted) snack(context, t('rules_needed'), color: danger);
+      }
     }
   }
 
