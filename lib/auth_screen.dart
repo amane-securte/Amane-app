@@ -98,7 +98,7 @@ class _AuthScreenState extends State<AuthScreen> {
             padding: const EdgeInsets.all(20),
             children: [
               const SizedBox(height: 8),
-              Center(child: Image.asset('assets/logo.png', height: 100)),
+              Center(child: Image.asset('assets/logo_full.png', height: 210)),
               const SizedBox(height: 20),
               SegmentedButton<bool>(
                 segments: [

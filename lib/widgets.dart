@@ -11,9 +11,18 @@ class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => const Scaffold(
-        backgroundColor: navy,
-        body: Center(child: CircularProgressIndicator(color: gold)),
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: cream,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset('assets/logo_full.png', height: 220),
+              const SizedBox(height: 24),
+              const CircularProgressIndicator(color: gold),
+            ],
+          ),
+        ),
       );
 }
 
