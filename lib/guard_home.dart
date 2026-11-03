@@ -11,9 +11,13 @@ import 'widgets.dart';
 
 /// Écran de l'agent : pointage GPS, SOS, historique.
 class GuardHome extends StatefulWidget {
-  const GuardHome({super.key, required this.prefs, required this.me});
+  const GuardHome(
+      {super.key, required this.prefs, required this.me, this.embedded = false});
   final Prefs prefs;
   final UserDoc me;
+
+  /// Vrai quand l'écran est affiché dans un onglet de l'administrateur.
+  final bool embedded;
 
   @override
   State<GuardHome> createState() => _GuardHomeState();
@@ -158,9 +162,7 @@ class _GuardHomeState extends State<GuardHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: amaneAppBar(context, widget.prefs),
-      body: SafeArea(
+    final content = SafeArea(
         child: StreamBuilder<DocumentSnapshotMap?>(
           stream: _site,
           builder: (context, siteSnap) {
@@ -182,7 +184,11 @@ class _GuardHomeState extends State<GuardHome> {
             );
           },
         ),
-      ),
+      );
+    if (widget.embedded) return content;
+    return Scaffold(
+      appBar: amaneAppBar(context, widget.prefs),
+      body: content,
     );
   }
 

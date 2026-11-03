@@ -49,7 +49,7 @@ class _AdminHomeState extends State<AdminHome> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         appBar: amaneAppBar(
           context,
@@ -62,6 +62,7 @@ class _AdminHomeState extends State<AdminHome> {
             indicatorColor: const Color(0xFFD1A850),
             tabs: [
               Tab(text: t('tab_live')),
+              Tab(text: t('tab_mine')),
               Tab(text: t('tab_plan')),
               Tab(text: t('tab_guards')),
               Tab(text: t('tab_sites')),
@@ -87,6 +88,7 @@ class _AdminHomeState extends State<AdminHome> {
                 return TabBarView(
                   children: [
                     _liveTab(),
+                    GuardHome(prefs: widget.prefs, me: widget.me, embedded: true),
                     PlanningTab(t: t, guards: users, sites: sites),
                     _guardsTab(sites, users),
                     _sitesTab(sites),
