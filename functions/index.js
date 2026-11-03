@@ -34,7 +34,7 @@ async function send(tokens, title, body, data) {
     tokens,
     notification: { title, body },
     data,
-    android: { priority: "high", notification: { sound: "default", channelId: "sos" } },
+    android: { priority: "high", notification: { sound: "siren", channelId: "sos_siren", defaultVibrateTimings: false } },
   });
 }
 

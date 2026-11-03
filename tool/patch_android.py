@@ -66,5 +66,52 @@ for name in ("android/app/build.gradle.kts", "android/app/build.gradle"):
             t = t.replace("minSdkVersion flutter.minSdkVersion", "minSdkVersion Math.max(23, flutter.minSdkVersion)")
         g.write_text(t, encoding="utf-8")
 
+# Sirène SOS : son personnalisé + canal de notification « sos_siren » (importance
+# haute, flux ALARME pour sonner même en mode vibreur).
+import shutil
+raw = pathlib.Path("android/app/src/main/res/raw")
+raw.mkdir(parents=True, exist_ok=True)
+shutil.copy("assets/siren.wav", raw / "siren.wav")
+(raw / "keep.xml").write_text(
+    '<?xml version="1.0" encoding="utf-8"?>\n'
+    '<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@raw/siren"/>\n',
+    encoding="utf-8")
+for act in pathlib.Path("android/app/src/main").rglob("MainActivity.kt"):
+    pkg = re.search(r"^package\s+(\S+)", act.read_text(encoding="utf-8"), re.M).group(1)
+    act.write_text(f"""package {pkg}
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.media.AudioAttributes
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity() {{
+    override fun onCreate(savedInstanceState: Bundle?) {{
+        super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {{
+            val nm = getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel("sos_siren") == null) {{
+                val ch = NotificationChannel("sos_siren", "Alertes SOS", NotificationManager.IMPORTANCE_HIGH)
+                ch.description = "Sirène des alertes SOS AMANE"
+                ch.enableVibration(true)
+                ch.vibrationPattern = longArrayOf(0, 800, 400, 800, 400, 800)
+                ch.setSound(
+                    Uri.parse("android.resource://" + packageName + "/raw/siren"),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                nm.createNotificationChannel(ch)
+            }}
+        }}
+    }}
+}}
+""", encoding="utf-8")
+    print("MainActivity patched:", act)
+
 print("Android files patched")
 print(open("android/app/build.gradle.kts" if pathlib.Path("android/app/build.gradle.kts").exists() else "android/app/build.gradle").read())

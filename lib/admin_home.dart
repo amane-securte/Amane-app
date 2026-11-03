@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -201,10 +202,21 @@ class _AdminHomeState extends State<AdminHome> {
     if (_alarmOpen) return;
     _alarmOpen = true;
     var ringing = true;
+    final siren = AudioPlayer();
+    try {
+      await siren.setAudioContext(AudioContext(
+        android: const AudioContextAndroid(
+          usageType: AndroidUsageType.alarm,
+          contentType: AndroidContentType.sonification,
+          audioFocus: AndroidAudioFocus.gainTransient,
+        ),
+      ));
+      await siren.setReleaseMode(ReleaseMode.loop);
+      await siren.play(AssetSource('siren.wav'), volume: 1.0);
+    } catch (_) {}
     () async {
       while (ringing && mounted) {
         HapticFeedback.heavyImpact();
-        SystemSound.play(SystemSoundType.alert);
         await Future.delayed(const Duration(milliseconds: 900));
       }
     }();
@@ -258,6 +270,8 @@ class _AdminHomeState extends State<AdminHome> {
     );
     ringing = false;
     _alarmOpen = false;
+    siren.stop().catchError((_) {});
+    siren.dispose();
     if (go == 'take' || go == 'call' || go == 'map') {
       await db
           .collection('alerts')
