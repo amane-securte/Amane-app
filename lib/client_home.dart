@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'data.dart';
+import 'emergency.dart';
 import 'geo.dart';
 import 'i18n.dart';
 import 'theme.dart';
@@ -182,8 +183,10 @@ class _ClientHomeState extends State<ClientHome> {
                     style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 _callButton(Icons.shield, t('call_amane'), 'tel:$controlPhone', navy),
-                _callButton(Icons.local_police, t('call_police'), 'tel:17', const Color(0xFF1F4E99)),
-                _callButton(Icons.local_fire_department, t('call_civil'), 'tel:18', danger),
+                _callButton(Icons.local_police, t('call_police'), 'tel:$policeNumber', const Color(0xFF1F4E99)),
+                _callButton(Icons.local_fire_department, t('call_civil'), 'tel:$fireNumber', danger),
+                _callButton(Icons.security, t('call_gendarmerie'), 'tel:$gendarmerieNumber', const Color(0xFF2E5E3A)),
+                emergencyButton(context, t),
                 if (past.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   Text(t('client_history'),

@@ -6,6 +6,7 @@ import 'data.dart';
 import 'geo.dart';
 import 'accounting.dart';
 import 'client_home.dart';
+import 'emergency.dart';
 import 'guard_home.dart';
 import 'logbook.dart';
 import 'planning.dart';
@@ -127,6 +128,10 @@ class _AdminHomeState extends State<AdminHome> {
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: emergencyButton(context, t),
+                ),
                 _h(t('alerts'), color: alerts.isEmpty ? null : danger),
                 if (alerts.isEmpty)
                   _empty(t('no_alerts'))
@@ -268,8 +273,8 @@ class _AdminHomeState extends State<AdminHome> {
                       'status': 'taken',
                       'actionAt': Timestamp.now(),
                     });
-                    if (act == 'police') await openUrl('tel:17');
-                    if (act == 'civil' || act == 'ambulance') await openUrl('tel:18');
+                    if (act == 'police') await openUrl('tel:$policeNumber');
+                    if (act == 'civil' || act == 'ambulance') await openUrl('tel:$fireNumber');
                   },
                   itemBuilder: (_) => [
                     for (final act in ['patrol', 'police', 'civil', 'ambulance'])

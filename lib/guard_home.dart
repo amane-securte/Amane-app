@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'data.dart';
 import 'geo.dart';
+import 'emergency.dart';
 import 'i18n.dart';
 import 'logbook.dart';
 import 'planning.dart';
@@ -255,6 +256,8 @@ class _GuardHomeState extends State<GuardHome> {
             label: Text(t('call_control')),
           ),
         ),
+        const SizedBox(height: 8),
+        Center(child: emergencyButton(context, t)),
         const SizedBox(height: 28),
         MyShifts(t: t, stream: _shifts),
         const SizedBox(height: 16),
