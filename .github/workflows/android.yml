@@ -25,6 +25,8 @@ jobs:
           cache: true
 
       - name: Generate Android platform files
+        env:
+          AMANE_KEY_PASSWORD: ${{ secrets.AMANE_KEY_PASSWORD }}
         run: |
           flutter --version
           flutter create --platforms=android --org mr.amane --project-name amane_app .
@@ -40,16 +42,21 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build APK and Play Store bundle
+        env:
+          AMANE_KEY_PASSWORD: ${{ secrets.AMANE_KEY_PASSWORD }}
+        run: |
+          flutter build apk --release
+          flutter build appbundle --release
 
       - name: Publish test build
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk Amane.apk
+          cp build/app/outputs/bundle/release/app-release.aab Amane-PlayStore.aab
           gh release delete test-build --yes --cleanup-tag || true
-          gh release create test-build Amane.apk \
+          gh release create test-build Amane.apk Amane-PlayStore.aab \
             --prerelease \
             --title "Amane – نسخة تجريبية / version de test" \
             --notes "Build ${{ github.run_number }} – ${GITHUB_SHA::7}"
