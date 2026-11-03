@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'data.dart';
 import 'i18n.dart';
+import 'pdf_docs.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -157,7 +158,7 @@ class _AccountingTabState extends State<AccountingTab> {
         ),
         const SizedBox(height: 18),
         Text(t('salaries'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-        Text(t('tap_rate'), style: const TextStyle(color: muted, fontSize: 12)),
+        Text(t('tap_row'), style: const TextStyle(color: muted, fontSize: 12)),
         const SizedBox(height: 6),
         if (payRows.isEmpty) Text(t('no_hours'), style: const TextStyle(color: muted)),
         ...payRows.map((r) => Card(
@@ -171,12 +172,23 @@ class _AccountingTabState extends State<AccountingTab> {
                 })),
                 trailing: Text('${money(r.$6)} MRU',
                     style: const TextStyle(fontWeight: FontWeight.w600)),
-                onTap: () => _editRate('g_${r.$1}', r.$2, r.$5, t('hourly_pay')),
+                onTap: () => _rowActions(
+                  pdf: () => printPayslip(
+                    name: r.$2,
+                    phone: widget.users.where((u) => u.id == r.$1).firstOrNull?.phone ?? '',
+                    month: '${two(_month.month)}/${_month.year}',
+                    hours: r.$3,
+                    shifts: r.$4,
+                    rate: r.$5,
+                  ),
+                  rate: () => _editRate('g_${r.$1}', r.$2, r.$5, t('hourly_pay')),
+                  pdfLabel: t('pdf_payslip'),
+                ),
               ),
             )),
         const SizedBox(height: 18),
         Text(t('invoices'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-        Text(t('tap_rate'), style: const TextStyle(color: muted, fontSize: 12)),
+        Text(t('tap_row'), style: const TextStyle(color: muted, fontSize: 12)),
         const SizedBox(height: 6),
         if (invRows.isEmpty) Text(t('no_hours'), style: const TextStyle(color: muted)),
         ...invRows.map((r) {
@@ -188,7 +200,18 @@ class _AccountingTabState extends State<AccountingTab> {
               subtitle: Text('$no · ${t('inv_line', {'h': hours(r.$3), 'r': money(r.$4)})}'),
               trailing: Text('${money(r.$5)} MRU',
                   style: const TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () => _editRate('s_${r.$1}', r.$2, r.$4, t('billing_rate')),
+              onTap: () => _rowActions(
+                pdf: () => printInvoice(
+                  number: no,
+                  siteName: r.$2,
+                  client: widget.sites.where((s) => s.id == r.$1).firstOrNull?.client ?? '',
+                  month: '${two(_month.month)}/${_month.year}',
+                  hours: r.$3,
+                  rate: r.$4,
+                ),
+                rate: () => _editRate('s_${r.$1}', r.$2, r.$4, t('billing_rate')),
+                pdfLabel: t('pdf_invoice'),
+              ),
             ),
           );
         }),
@@ -235,6 +258,43 @@ class _AccountingTabState extends State<AccountingTab> {
           ],
         ),
       );
+
+  Future<void> _rowActions({
+    required Future<void> Function() pdf,
+    required Future<void> Function() rate,
+    required String pdfLabel,
+  }) async {
+    final v = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf, color: danger),
+              title: Text(pdfLabel),
+              onTap: () => Navigator.pop(ctx, 'pdf'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: Text(t('edit_rate')),
+              onTap: () => Navigator.pop(ctx, 'rate'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (v == 'pdf') {
+      try {
+        await pdf();
+      } catch (e) {
+        if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+      }
+    } else if (v == 'rate') {
+      await rate();
+    }
+  }
 
   Future<void> _editRate(String key, String who, double cur, String label) async {
     final c = TextEditingController(text: cur == 0 ? '' : cur.toStringAsFixed(0));

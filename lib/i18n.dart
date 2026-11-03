@@ -148,6 +148,11 @@ class T {
       'billing_rate': 'السعر المفوتر',
       'acc_note': 'محسوبة من ساعات الحضور الفعلية المسجّلة. الرواتب إجمالية دون الاشتراكات، والفواتير قبل الضريبة.',
       'all_rates': 'كل الأسعار (الحراس والمواقع)',
+      'tap_row': 'اضغط على السطر: PDF أو تعديل السعر.',
+      'pdf_invoice': 'فاتورة PDF (طباعة / مشاركة)',
+      'pdf_payslip': 'قسيمة راتب PDF (طباعة / مشاركة)',
+      'edit_rate': 'تعديل السعر بالساعة',
+      'client': 'اسم الزبون (للفواتير)',
     },
     'fr': {
       'lang_btn': 'العربية',
@@ -284,6 +289,11 @@ class T {
       'billing_rate': 'Tarif facturé',
       'acc_note': 'Calculé sur les heures réellement pointées. Salaires bruts hors cotisations, factures hors taxes.',
       'all_rates': 'Tous les taux (agents et sites)',
+      'tap_row': 'Touchez une ligne : PDF ou modifier le taux.',
+      'pdf_invoice': 'Facture PDF (imprimer / partager)',
+      'pdf_payslip': 'Fiche de paie PDF (imprimer / partager)',
+      'edit_rate': 'Modifier le taux horaire',
+      'client': 'Nom du client (factures)',
     },
   };
 }

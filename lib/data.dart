@@ -51,9 +51,10 @@ class UserDoc {
 class Site {
   Site(this.id, Map<String, dynamic> m)
       : name = _str(m['name']),
+        client = _str(m['client']),
         fix = Fix.read(m, ''),
         radius = m['radius'] is num ? (m['radius'] as num).toInt() : 200;
-  final String id, name;
+  final String id, name, client;
   final Fix? fix;
   final int radius;
 }

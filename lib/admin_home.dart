@@ -399,7 +399,7 @@ class _AdminHomeState extends State<AdminHome> {
                   child: ListTile(
                     leading: Icon(Icons.location_on,
                         color: s.fix == null ? muted : okGreen),
-                    title: Text(s.name),
+                    title: Text(s.client.isEmpty ? s.name : '${s.name} · ${s.client}'),
                     subtitle: Text(s.fix == null
                         ? t('no_coords')
                         : '${s.fix!.lat.toStringAsFixed(5)}, ${s.fix!.lng.toStringAsFixed(5)} · ${s.radius} m'),
@@ -429,6 +429,7 @@ class _AdminHomeState extends State<AdminHome> {
 
   Future<void> _editSite(Site? s) async {
     final name = TextEditingController(text: s?.name ?? '');
+    final client = TextEditingController(text: s?.client ?? '');
     final coords = TextEditingController(
         text: s?.fix == null ? '' : '${s!.fix!.lat}, ${s.fix!.lng}');
     final radius = TextEditingController(text: '${s?.radius ?? 200}');
@@ -447,6 +448,10 @@ class _AdminHomeState extends State<AdminHome> {
                 TextField(
                     controller: name,
                     decoration: InputDecoration(labelText: t('site_name'))),
+                const SizedBox(height: 10),
+                TextField(
+                    controller: client,
+                    decoration: InputDecoration(labelText: t('client'))),
                 const SizedBox(height: 10),
                 TextField(
                   controller: coords,
@@ -516,6 +521,7 @@ class _AdminHomeState extends State<AdminHome> {
       final r = int.tryParse(radius.text.trim()) ?? 200;
       final data = <String, dynamic>{
         'name': name.text.trim(),
+        'client': client.text.trim(),
         'radius': r < 20 ? 20 : r,
         'Lat': f?.lat,
         'Lng': f?.lng,
