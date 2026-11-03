@@ -9,6 +9,7 @@ import 'emergency.dart';
 import 'guard_home.dart';
 import 'logbook.dart';
 import 'map_tab.dart';
+import 'people.dart';
 import 'planning.dart';
 import 'i18n.dart';
 import 'theme.dart';
@@ -383,62 +384,94 @@ class _AdminHomeState extends State<AdminHome> {
     return Builder(
       builder: (context) {
         final pending = users.where((u) => u.role == 'pending').toList();
-        final others = users.where((u) => u.role != 'pending').toList();
+        final staff = users.where((u) => u.role == 'guard' || u.role == 'admin').toList();
+        final clients = users.where((u) => u.role == 'client').toList();
+        final off = users.where((u) => u.role == 'disabled').toList();
         final siteName = {for (final s in sites) s.id: s.name};
-        return ListView(
-          padding: const EdgeInsets.all(16),
+        Widget tile(UserDoc u) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                title: Text(u.name),
+                subtitle: Text(
+                    [
+                      if (u.phone.isNotEmpty) u.phone,
+                      siteName[u.siteId] ?? '—',
+                    ].join(' · '),
+                    textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.start),
+                leading: _roleIcon(u.role),
+                trailing: PopupMenuButton<String>(
+                  onSelected: (v) => _userAction(u, v, sites),
+                  itemBuilder: (_) => [
+                    if (u.phone.isNotEmpty)
+                      PopupMenuItem(value: 'call', child: Text(t('call'))),
+                    if (u.phone.isNotEmpty)
+                      PopupMenuItem(value: 'invite', child: Text(t('invite_again'))),
+                    PopupMenuItem(value: 'site', child: Text(t('set_site'))),
+                    if (u.role == 'guard')
+                      PopupMenuItem(value: 'admin', child: Text(t('make_admin'))),
+                    if (u.role == 'admin' || u.role == 'client')
+                      PopupMenuItem(value: 'guard', child: Text(t('make_guard'))),
+                    if (u.role == 'guard')
+                      PopupMenuItem(value: 'client', child: Text(t('make_client'))),
+                    if (u.role != 'disabled')
+                      PopupMenuItem(value: 'disable', child: Text(t('disable')))
+                    else
+                      PopupMenuItem(value: 'guard', child: Text(t('enable'))),
+                  ],
+                ),
+              ),
+            );
+        return Stack(
           children: [
-            if (pending.isNotEmpty) ...[
-              _h(t('pending_req', {'n': '${pending.length}'}), color: warn),
-              ...pending.map((u) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      title: Text(u.name),
-                      subtitle: ltrText(u.phone),
-                      trailing: FilledButton(
-                        onPressed: () => _assign(u, sites, approve: true),
-                        child: Text(t('approve')),
-                      ),
-                    ),
-                  )),
-              const SizedBox(height: 16),
-            ],
-            _h(t('tab_guards')),
-            if (others.isEmpty) _empty(t('no_guards')),
-            ...others.map((u) => Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    title: Text(u.name),
-                    subtitle: Text(
-                        [
-                          if (u.phone.isNotEmpty) u.phone,
-                          siteName[u.siteId] ?? '—',
-                        ].join(' · '),
-                        textDirection: TextDirection.ltr,
-                        textAlign: TextAlign.start),
-                    leading: _roleIcon(u.role),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (v) => _userAction(u, v, sites),
-                      itemBuilder: (_) => [
-                        if (u.phone.isNotEmpty)
-                          PopupMenuItem(value: 'call', child: Text(t('call'))),
-                        PopupMenuItem(value: 'site', child: Text(t('set_site'))),
-                        if (u.role == 'guard')
-                          PopupMenuItem(
-                              value: 'admin', child: Text(t('make_admin'))),
-                        if (u.role == 'admin')
-                          PopupMenuItem(
-                              value: 'guard', child: Text(t('make_guard'))),
-                        if (u.role != 'disabled')
-                          PopupMenuItem(
-                              value: 'disable', child: Text(t('disable')))
-                        else
-                          PopupMenuItem(
-                              value: 'guard', child: Text(t('enable'))),
-                      ],
-                    ),
-                  ),
-                )),
+            ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.share, color: navy),
+                  label: Text(t('share_app')),
+                  onPressed: () => shareInvite(context, t),
+                ),
+                const SizedBox(height: 16),
+                if (pending.isNotEmpty) ...[
+                  _h(t('pending_req', {'n': '${pending.length}'}), color: warn),
+                  ...pending.map((u) => Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text(u.name),
+                          subtitle: ltrText(u.phone),
+                          trailing: FilledButton(
+                            onPressed: () => _assign(u, sites, approve: true),
+                            child: Text(t('approve')),
+                          ),
+                        ),
+                      )),
+                  const SizedBox(height: 16),
+                ],
+                _h(t('sec_guards', {'n': '${staff.length}'})),
+                if (staff.isEmpty) _empty(t('no_guards')),
+                ...staff.map(tile),
+                const SizedBox(height: 16),
+                _h(t('sec_clients', {'n': '${clients.length}'})),
+                if (clients.isEmpty) _empty(t('no_clients')),
+                ...clients.map(tile),
+                if (off.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _h(t('sec_disabled', {'n': '${off.length}'}), color: danger),
+                  ...off.map(tile),
+                ],
+              ],
+            ),
+            PositionedDirectional(
+              end: 16,
+              bottom: 16,
+              child: FloatingActionButton.extended(
+                heroTag: 'addPerson',
+                onPressed: () => addPerson(context, t, sites),
+                icon: const Icon(Icons.person_add),
+                label: Text(t('add_short')),
+              ),
+            ),
           ],
         );
       },
@@ -473,6 +506,10 @@ class _AdminHomeState extends State<AdminHome> {
         await ref.update({'role': 'admin'});
       case 'guard':
         await ref.update({'role': 'guard'});
+      case 'client':
+        await ref.update({'role': 'client'});
+      case 'invite':
+        if (mounted) await shareInvite(context, t, phone: u.phone);
       case 'disable':
         await ref.update({'role': 'disabled'});
     }
