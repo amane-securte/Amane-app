@@ -6,6 +6,7 @@ import 'i18n.dart';
 import 'logbook.dart';
 import 'pdf_docs.dart';
 import 'planning.dart';
+import 'report.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -69,8 +70,19 @@ class _ClientSiteTabState extends State<ClientSiteTab> {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text(widget.me.siteName,
-                style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(widget.me.siteName,
+                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.summarize, color: danger, size: 18),
+                  label: Text(t('monthly_report')),
+                  onPressed: () => _report(context),
+                ),
+              ],
+            ),
             const SizedBox(height: 14),
             _h(t('client_on_duty', {'n': '${onDuty.length}'}),
                 color: onDuty.isEmpty ? warn : okGreen),
@@ -146,6 +158,41 @@ class _ClientSiteTabState extends State<ClientSiteTab> {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Text(text, style: const TextStyle(color: muted)),
       );
+
+  /// Rapport du mois en cours ou du mois précédent, au choix.
+  Future<void> _report(BuildContext context) async {
+    final now = DateTime.now();
+    final cur = DateTime(now.year, now.month);
+    final prev = DateTime(now.year, now.month - 1);
+    final m = await showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final d in [cur, prev])
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf, color: danger),
+                title: Text('${t('monthly_report')} · ${two(d.month)}/${d.year}'),
+                onTap: () => Navigator.pop(ctx, d),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (m == null || widget.me.siteId == null) return;
+    try {
+      await monthlyReport(
+        month: m,
+        scope: widget.me.siteName,
+        siteId: widget.me.siteId,
+        clientUid: widget.me.id,
+      );
+    } catch (e) {
+      if (context.mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+    }
+  }
 }
 
 /// « Mes factures » : factures envoyées par AMANE, téléchargeables en PDF.

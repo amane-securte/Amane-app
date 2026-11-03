@@ -337,3 +337,118 @@ String _today() {
   String two(int n) => n.toString().padLeft(2, '0');
   return '${two(d.day)}/${two(d.month)}/${d.year}';
 }
+
+/// Tableau simple à plusieurs colonnes (la première à gauche, les autres à droite).
+pw.Widget _grid(List<String> head, List<List<String>> rows, {bool numeric = true}) {
+  return pw.TableHelper.fromTextArray(
+    headers: head,
+    data: rows,
+    headerStyle: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 10),
+    headerDecoration: const pw.BoxDecoration(color: _navy),
+    cellStyle: const pw.TextStyle(fontSize: 9.5),
+    cellAlignments: {
+      for (var i = 0; i < head.length; i++)
+        i: (i == 0 || !numeric) ? pw.Alignment.centerLeft : pw.Alignment.centerRight,
+    },
+    cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+    border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+  );
+}
+
+pw.Widget _section(String title) => pw.Padding(
+      padding: const pw.EdgeInsets.only(top: 14, bottom: 6),
+      child: pw.Text(title,
+          style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: _navy)),
+    );
+
+pw.Widget _kpis(List<(String, String)> items) => pw.Row(
+      children: [
+        for (final k in items)
+          pw.Expanded(
+            child: pw.Container(
+              margin: const pw.EdgeInsets.only(right: 6),
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: _gold, width: 0.8),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+              ),
+              child: pw.Column(children: [
+                pw.Text(k.$2, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: _navy)),
+                pw.Text(k.$1, style: const pw.TextStyle(fontSize: 8.5, color: _grey), textAlign: pw.TextAlign.center),
+              ]),
+            ),
+          ),
+      ],
+    );
+
+/// Rapport mensuel d'activité (administration ou client d'un site).
+/// [bySite] / [byAgent] : (nom, missions, heures, pointages hors site).
+/// [incidents] / [alerts] : (date, site, texte).
+Future<void> printActivityReport({
+  required String month,
+  required String scope,
+  required double hours,
+  required int missions,
+  required int offSite,
+  required List<(String, int, double, int)> bySite,
+  required List<(String, int, double, int)> byAgent,
+  required List<(String, String, String)> incidents,
+  required List<(String, String, String)> alerts,
+  required int logCount,
+}) async {
+  final doc = pw.Document(theme: await _theme());
+  final lh = await _Letterhead.load();
+  List<String> row((String, int, double, int) r) =>
+      [r.$1, '${r.$2}', _h(r.$3), r.$4 == 0 ? '—' : '${r.$4}'];
+  final body = <pw.Widget>[
+    _refLine("RAPPORT MENSUEL D'ACTIVITÉ", month),
+    pw.Text(scope, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+    pw.SizedBox(height: 10),
+    _kpis([
+      ('Heures de garde', _h(hours)),
+      ('Missions', '$missions'),
+      ('Hors site', '$offSite'),
+      ('Alertes SOS', '${alerts.length}'),
+      ('Incidents', '${incidents.length}'),
+      ('Main courante', '$logCount'),
+    ]),
+    if (bySite.length > 1) ...[
+      _section('Par site'),
+      _grid(['Site', 'Missions', 'Heures', 'Hors site'], [for (final r in bySite) row(r)]),
+    ],
+    _section('Par agent'),
+    if (byAgent.isEmpty)
+      pw.Text('Aucune mission ce mois-ci.', style: const pw.TextStyle(color: _grey))
+    else
+      _grid(['Agent', 'Missions', 'Heures', 'Hors site'], [for (final r in byAgent.take(25)) row(r)]),
+    _section('Alertes SOS'),
+    if (alerts.isEmpty)
+      pw.Text('Aucune alerte ce mois-ci.', style: const pw.TextStyle(color: _grey))
+    else
+      _grid(['Date', 'Site', 'Nature'], [for (final a in alerts.take(12)) [a.$1, a.$2, a.$3]],
+          numeric: false),
+    _section('Incidents (main courante)'),
+    if (incidents.isEmpty)
+      pw.Text('Aucun incident signalé.', style: const pw.TextStyle(color: _grey))
+    else
+      _grid(['Date', 'Site', 'Description'],
+          [for (final i in incidents.take(12)) [i.$1, i.$2, i.$3.length > 90 ? '${i.$3.substring(0, 90)}…' : i.$3]],
+          numeric: false),
+  ];
+  // Plusieurs pages si nécessaire : en-tête et pied AMANE sur chacune.
+  doc.addPage(pw.MultiPage(
+    pageTheme: pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.zero,
+      buildBackground: lh.background,
+    ),
+    header: (c) => pw.Padding(padding: const pw.EdgeInsets.only(bottom: 14), child: lh.header()),
+    footer: (c) => lh.footer(),
+    build: (c) => [
+      for (final w in body)
+        pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 40), child: w),
+    ],
+  ));
+  await Printing.layoutPdf(
+      onLayout: (_) => doc.save(), name: 'Rapport-${scope.replaceAll(' ', '_')}-${month.replaceAll('/', '-')}.pdf');
+}

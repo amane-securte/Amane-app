@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'data.dart';
 import 'i18n.dart';
 import 'pdf_docs.dart';
+import 'report.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -162,6 +163,21 @@ class _AccountingTabState extends State<AccountingTab> {
             IconButton(onPressed: () => _move(1), icon: const Icon(Icons.chevron_right)),
           ],
         ),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.summarize, color: danger),
+            label: Text(t('monthly_report')),
+            onPressed: () async {
+              try {
+                await monthlyReport(month: _month, scope: 'AMANE Sécurité privée – tous les sites');
+              } catch (e) {
+                if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+              }
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
         // Synthèse
         Card(
           child: Padding(
