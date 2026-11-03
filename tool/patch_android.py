@@ -35,6 +35,13 @@ for name in ("android/app/build.gradle.kts", "android/app/build.gradle"):
     if g.exists():
         t = g.read_text(encoding="utf-8")
         t = re.sub(r'applicationId\s*=?\s*"[^"]*"', f'applicationId = "{APP_ID}"', t, count=1)
+        # Firebase demande Android 6 (API 23) au minimum.
+        if name.endswith(".kts"):
+            t = t.replace("minSdk = flutter.minSdkVersion", "minSdk = maxOf(23, flutter.minSdkVersion)")
+        else:
+            t = t.replace("minSdk = flutter.minSdkVersion", "minSdk = Math.max(23, flutter.minSdkVersion)")
+            t = t.replace("minSdkVersion flutter.minSdkVersion", "minSdkVersion Math.max(23, flutter.minSdkVersion)")
         g.write_text(t, encoding="utf-8")
 
 print("Android files patched")
+print(open("android/app/build.gradle.kts" if pathlib.Path("android/app/build.gradle.kts").exists() else "android/app/build.gradle").read())

@@ -1,6 +1,34 @@
 import 'package:geolocator/geolocator.dart';
 
-import 'store.dart';
+/// Une position GPS : latitude, longitude, précision en mètres.
+class Fix {
+  const Fix(this.lat, this.lng, this.acc);
+  final double lat;
+  final double lng;
+  final double acc;
+
+  String get mapUrl =>
+      'https://maps.google.com/?q=${lat.toStringAsFixed(6)},${lng.toStringAsFixed(6)}';
+
+  /// Lit une position enregistrée sous la forme `<p>Lat`, `<p>Lng`, `<p>Acc`.
+  static Fix? read(Map<String, dynamic> m, String p) {
+    final lat = m['${p}Lat'], lng = m['${p}Lng'], acc = m['${p}Acc'];
+    if (lat is! num || lng is! num) return null;
+    return Fix(lat.toDouble(), lng.toDouble(), acc is num ? acc.toDouble() : 0);
+  }
+
+  Map<String, dynamic> write(String p) =>
+      {'${p}Lat': lat, '${p}Lng': lng, '${p}Acc': acc.round()};
+
+  /// Comprend « 20.94, -17.03 » ou un lien Google Maps.
+  static Fix? parse(String s) {
+    final m = RegExp(r'(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)').firstMatch(s);
+    if (m == null) return null;
+    final lat = double.parse(m.group(1)!), lng = double.parse(m.group(2)!);
+    if (lat.abs() > 90 || lng.abs() > 180) return null;
+    return Fix(lat, lng, 0);
+  }
+}
 
 enum GeoErr { serviceOff, denied, deniedForever, timeout }
 

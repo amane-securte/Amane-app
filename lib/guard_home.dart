@@ -1,0 +1,365 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+
+import 'data.dart';
+import 'geo.dart';
+import 'i18n.dart';
+import 'theme.dart';
+import 'widgets.dart';
+
+/// Écran de l'agent : pointage GPS, SOS, historique.
+class GuardHome extends StatefulWidget {
+  const GuardHome({super.key, required this.prefs, required this.me});
+  final Prefs prefs;
+  final UserDoc me;
+
+  @override
+  State<GuardHome> createState() => _GuardHomeState();
+}
+
+class _GuardHomeState extends State<GuardHome> {
+  bool _busy = false;
+  late Stream<QueryMap> _punches;
+  late Stream<DocumentSnapshotMap?> _site;
+
+  T get t => T(widget.prefs.lang);
+  UserDoc get me => widget.me;
+
+  @override
+  void initState() {
+    super.initState();
+    // Filtré sur l'agent : les règles de sécurité l'exigent.
+    _punches =
+        db.collection('punches').where('uid', isEqualTo: me.id).snapshots();
+    _site = _siteStream();
+  }
+
+  Stream<DocumentSnapshotMap?> _siteStream() {
+    final id = me.siteId;
+    if (id == null) return Stream.value(null);
+    return db.collection('sites').doc(id).snapshots();
+  }
+
+  @override
+  void didUpdateWidget(GuardHome old) {
+    super.didUpdateWidget(old);
+    if (old.me.siteId != me.siteId) _site = _siteStream();
+  }
+
+  Future<GeoResult> _locate({int seconds = 15}) async {
+    setState(() => _busy = true);
+    final r = await getFix(seconds: seconds);
+    if (mounted) setState(() => _busy = false);
+    return r;
+  }
+
+  Future<void> _punch(PunchDoc? open, Site? site) async {
+    final r = await _locate();
+    if (!mounted) return;
+    final (dist, ok) = checkSite(r.fix, site);
+    final p = open == null ? 'in' : 'out';
+    final data = <String, dynamic>{
+      '${p}At': Timestamp.now(),
+      if (r.fix != null) ...r.fix!.write(p),
+      if (dist != null) '${p}Dist': dist.round(),
+      if (ok != null) '${p}Ok': ok,
+    };
+    // Écriture sans attendre : Firestore la garde si le réseau est coupé.
+    if (open == null) {
+      db.collection('punches').add({
+        'uid': me.id,
+        'name': me.name,
+        'phone': me.phone,
+        'siteId': site?.id,
+        'siteName': site?.name ?? '',
+        ...data,
+      });
+    } else {
+      db.collection('punches').doc(open.id).update(data);
+    }
+    if (r.error != null) {
+      showGpsError(context, t, r.error!);
+    } else {
+      final (txt, col) = locInfo(t, r.fix, dist, ok);
+      snack(context, '${t(open == null ? 'saved_in' : 'saved_out')} · $txt',
+          color: col);
+    }
+  }
+
+  Future<void> _sos(Site? site) async {
+    const types = ['assault', 'intrusion', 'fire', 'medical', 'other'];
+    final type = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(t('sos_title'),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            for (final ty in types)
+              ListTile(
+                leading:
+                    const Icon(Icons.warning_amber_rounded, color: danger),
+                title: Text(t('ty_$ty'), style: const TextStyle(fontSize: 17)),
+                onTap: () => Navigator.pop(ctx, ty),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (type == null || !mounted) return;
+
+    // En urgence, on n'attend pas le GPS plus de 10 secondes.
+    final r = await _locate(seconds: 10);
+    if (!mounted) return;
+    final f = r.fix;
+    final now = DateTime.now();
+
+    // 1) Alerte enregistrée sur le serveur (visible aussitôt par l'administration).
+    var online = true;
+    final write = db.collection('alerts').add({
+      'uid': me.id,
+      'name': me.name,
+      'phone': me.phone,
+      'siteName': site?.name ?? '',
+      'type': type,
+      'status': 'open',
+      'at': Timestamp.fromDate(now),
+      if (f != null) ...f.write(''),
+    });
+    try {
+      await write.timeout(const Duration(seconds: 6));
+    } catch (_) {
+      online = false; // restera en file d'attente jusqu'au retour du réseau
+    }
+    if (!mounted) return;
+
+    // 2) SMS de secours vers la salle de contrôle.
+    final text = t('sms_text', {
+      'type': t('ty_$type'),
+      'site': site?.name ?? '',
+      'name': me.name,
+      'pos': f == null ? '' : ' - ${f.mapUrl}',
+      'time': hm(now),
+    });
+    await openUrl('sms:$controlPhone?body=${Uri.encodeComponent(text)}');
+    if (!mounted) return;
+    snack(context, t(online ? 'sos_sent' : 'sos_queued'),
+        color: online ? navy : danger);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: amaneAppBar(context, widget.prefs),
+      body: SafeArea(
+        child: StreamBuilder<DocumentSnapshotMap?>(
+          stream: _site,
+          builder: (context, siteSnap) {
+            final sd = siteSnap.data;
+            final site = (sd != null && sd.exists)
+                ? Site(sd.id, sd.data() ?? const {})
+                : null;
+            return StreamBuilder<QueryMap>(
+              stream: _punches,
+              builder: (context, snap) {
+                final all = (snap.data?.docs ?? const [])
+                    .map((d) => PunchDoc(d.id, d.data()))
+                    .toList()
+                  ..sort((a, b) => b.inAt.compareTo(a.inAt));
+                final open = all.where((p) => p.open).firstOrNull;
+                final done = all.where((p) => !p.open).take(15).toList();
+                return _body(site, open, done);
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _body(Site? site, PunchDoc? open, List<PunchDoc> done) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _statusCard(site, open),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 56,
+          child: FilledButton.icon(
+            onPressed: _busy ? null : () => _punch(open, site),
+            icon: Icon(open == null ? Icons.login : Icons.logout),
+            label: Text(open == null ? t('btn_in') : t('btn_out'),
+                style: const TextStyle(fontSize: 18)),
+          ),
+        ),
+        if (_busy)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 10),
+                Text(t('locating')),
+              ],
+            ),
+          ),
+        const SizedBox(height: 28),
+        Center(
+          child: SizedBox(
+            width: 170,
+            height: 170,
+            child: ElevatedButton(
+              onPressed: _busy ? null : () => _sos(site),
+              style: ElevatedButton.styleFrom(
+                shape: const CircleBorder(),
+                backgroundColor: danger,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: danger.withValues(alpha: 0.5),
+                elevation: 6,
+              ),
+              child: const Text('SOS',
+                  style: TextStyle(
+                      fontSize: 44,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 3)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+            child: Text(t('sos_hint'), style: const TextStyle(color: muted))),
+        const SizedBox(height: 12),
+        Center(
+          child: OutlinedButton.icon(
+            onPressed: () => openUrl('tel:$controlPhone'),
+            icon: const Icon(Icons.phone),
+            label: Text(t('call_control')),
+          ),
+        ),
+        const SizedBox(height: 28),
+        Text(t('history'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        if (done.isEmpty)
+          Text(t('empty_history'), style: const TextStyle(color: muted))
+        else
+          ...done.map((p) => PunchTile(t: t, p: p, showName: false)),
+      ],
+    );
+  }
+
+  Widget _statusCard(Site? site, PunchDoc? open) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(me.name,
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+            Text(site?.name ?? t('no_site_assigned'),
+                style: TextStyle(color: site == null ? warn : muted)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(open != null ? Icons.shield : Icons.shield_outlined,
+                    color: open != null ? okGreen : muted),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    open != null
+                        ? t('status_on', {'t': hm(open.inAt)})
+                        : t('status_off'),
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: open != null ? okGreen : ink),
+                  ),
+                ),
+              ],
+            ),
+            if (open != null) ...[
+              const SizedBox(height: 6),
+              Builder(builder: (_) {
+                final (txt, col) =
+                    locInfo(t, open.inFix, open.inDist, open.inOk);
+                return pill('📍 $txt', col);
+              }),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Ligne d'une mission : date, heures, durée, contrôle GPS.
+class PunchTile extends StatelessWidget {
+  const PunchTile(
+      {super.key, required this.t, required this.p, this.showName = true});
+  final T t;
+  final PunchDoc p;
+  final bool showName;
+
+  @override
+  Widget build(BuildContext context) {
+    final out = p.outAt;
+    final (inTxt, inCol) = locInfo(t, p.inFix, p.inDist, p.inOk);
+    final (outTxt, outCol) = locInfo(t, p.outFix, p.outDist, p.outOk);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showName)
+              Text('${p.name} · ${p.siteName}',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+            Row(
+              children: [
+                Text(dm(p.inAt),
+                    style: TextStyle(
+                        fontWeight:
+                            showName ? FontWeight.normal : FontWeight.w600)),
+                const SizedBox(width: 10),
+                ltrText('${hm(p.inAt)} → ${out == null ? '…' : hm(out)}'),
+                const Spacer(),
+                Text(durText(t, (out ?? DateTime.now()).difference(p.inAt)),
+                    style: const TextStyle(color: muted)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                InkWell(
+                  onTap: p.inFix == null ? null : () => openUrl(p.inFix!.mapUrl),
+                  child: pill('${t('arrival')}: $inTxt', inCol),
+                ),
+                if (out != null)
+                  InkWell(
+                    onTap: p.outFix == null
+                        ? null
+                        : () => openUrl(p.outFix!.mapUrl),
+                    child: pill('${t('departure')}: $outTxt', outCol),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

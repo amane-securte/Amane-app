@@ -1,0 +1,59 @@
+rules_version = '2';
+
+// Règles de sécurité de la base AMANE.
+// À coller dans Firebase → Firestore Database → Règles → Publier.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner() {
+      return signedIn() && request.auth.token.email == 'amane.services.securite@gmail.com';
+    }
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function isAdmin() { return isOwner() || (hasProfile() && profile().role == 'admin'); }
+    function isGuard() { return hasProfile() && profile().role in ['guard', 'admin']; }
+
+    // Comptes : chacun voit le sien, l'administration voit et gère tout.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+        && (request.resource.data.role == 'pending'
+            || (isOwner() && request.resource.data.role == 'admin'));
+      // Un agent ne peut changer ni son rôle ni son site.
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.get('siteId', null) == resource.data.get('siteId', null));
+      allow delete: if isAdmin();
+    }
+
+    // Sites : lus par les agents, gérés par l'administration.
+    match /sites/{id} {
+      allow read: if isGuard();
+      allow write: if isAdmin();
+    }
+
+    // Pointages : chaque agent écrit et lit les siens.
+    match /punches/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAdmin()
+        || (isGuard() && resource.data.uid == request.auth.uid
+            && request.resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Alertes SOS : tout compte connecté peut en envoyer, l'administration les traite.
+    match /alerts/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'open';
+      allow update, delete: if isAdmin();
+    }
+  }
+}
