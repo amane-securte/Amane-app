@@ -778,21 +778,24 @@ class _AdminHomeState extends State<AdminHome> {
                       onSelected: (_) => setD(() => type = ty),
                     ),
                 ]),
-                if (type == 'bank') ...[
+                if (type == 'bank' || type == 'agency') ...[
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    initialValue: mauritanianBanks.contains(client.text) ? client.text : null,
+                    key: ValueKey('org-$type'),
+                    initialValue: (type == 'bank' ? mauritanianBanks : financialAgencies).contains(client.text)
+                        ? client.text
+                        : null,
                     isExpanded: true,
-                    decoration: InputDecoration(labelText: t('pick_bank')),
+                    decoration: InputDecoration(labelText: t(type == 'bank' ? 'pick_bank' : 'pick_agency')),
                     items: [
-                      for (final b in mauritanianBanks)
+                      for (final b in (type == 'bank' ? mauritanianBanks : financialAgencies))
                         DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis)),
                     ],
                     onChanged: (v) => setD(() {
                       if (v == null) return;
                       client.text = v;
                       if (name.text.trim().isEmpty) {
-                        final short = RegExp(r'\(([^)]+)\)').firstMatch(v)?.group(1) ?? v;
+                        final short = RegExp(r'\(([^)]+)\)').firstMatch(v)?.group(1) ?? v.split(' – ').first;
                         name.text = '$short – ';
                       }
                     }),

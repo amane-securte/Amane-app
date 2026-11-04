@@ -68,13 +68,14 @@ IconData serviceIcon(String s) => switch (s) {
     };
 
 /// Types de sites / clients.
-const siteTypes = ['individual', 'villa', 'institution', 'bank', 'shop', 'embassy', 'event', 'other'];
+const siteTypes = ['individual', 'villa', 'institution', 'bank', 'agency', 'shop', 'embassy', 'event', 'other'];
 
 const siteTypesFr = {
   'individual': 'Particulier',
   'villa': 'Villa',
   'institution': 'Institution / entreprise',
   'bank': 'Banque',
+  'agency': 'Agence financière / paiement mobile',
   'shop': 'Boutique / commerce',
   'embassy': 'Ambassade',
   'event': 'Événement',
@@ -86,6 +87,7 @@ IconData siteTypeIcon(String s) => switch (s) {
       'villa' => Icons.villa,
       'institution' => Icons.apartment,
       'bank' => Icons.account_balance,
+      'agency' => Icons.currency_exchange,
       'shop' => Icons.storefront,
       'embassy' => Icons.flag,
       'event' => Icons.event,
@@ -112,4 +114,18 @@ const mauritanianBanks = [
   'Banque Mauritanienne des Transactions Saines (BMS)',
   'Algerian Union Bank (AUB)',
   'QNB Mauritanie (QNBM)',
+];
+
+/// Agences financières et services de paiement mobile (clients « agence »).
+const financialAgencies = [
+  'Bankily – بنكيلي',
+  'Masrvi – مصرفي',
+  'Sedad – سداد',
+  'BIM Bank – بيم بنك',
+  'BFI Cash',
+  'Mechili – مشيلي',
+  'Moov Money – موف موني',
+  'GazaPay – غزة باي',
+  'Rassidy – رصيدي',
+  'Cadorim – كادوريم',
 ];
