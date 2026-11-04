@@ -452,3 +452,48 @@ Future<void> printActivityReport({
   await Printing.layoutPdf(
       onLayout: (_) => doc.save(), name: 'Rapport-${scope.replaceAll(' ', '_')}-${month.replaceAll('/', '-')}.pdf');
 }
+
+/// État mensuel des dépenses de la société, sur papier à en-tête.
+/// [byCat] : (catégorie, total) ; [lines] : (date, catégorie, libellé, montant).
+Future<void> printExpenses({
+  required String month,
+  required List<(String, double)> byCat,
+  required List<(String, String, String, double)> lines,
+  required double total,
+}) async {
+  final doc = pw.Document(theme: await _theme());
+  final lh = await _Letterhead.load();
+  final body = <pw.Widget>[
+    _refLine('ÉTAT DES DÉPENSES', month),
+    pw.SizedBox(height: 6),
+    _kpis([
+      ('Total des dépenses (MRU)', _money(total)),
+      ('Opérations', '${lines.length}'),
+      ('Catégories', '${byCat.length}'),
+    ]),
+    _section('Par catégorie'),
+    _grid(['Catégorie', 'Montant (MRU)'], [
+      for (final c in byCat) [c.$1, _money(c.$2)],
+      ['TOTAL', _money(total)],
+    ]),
+    _section('Détail des opérations'),
+    _grid(['Date', 'Catégorie', 'Libellé', 'Montant (MRU)'], [
+      for (final l in lines) [l.$1, l.$2, l.$3, _money(l.$4)],
+    ], numeric: false),
+  ];
+  doc.addPage(pw.MultiPage(
+    pageTheme: pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.zero,
+      buildBackground: lh.background,
+    ),
+    header: (c) => pw.Padding(padding: const pw.EdgeInsets.only(bottom: 14), child: lh.header()),
+    footer: (c) => lh.footer(),
+    build: (c) => [
+      for (final w in body)
+        pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 40), child: w),
+    ],
+  ));
+  await Printing.layoutPdf(
+      onLayout: (_) => doc.save(), name: 'Depenses-${month.replaceAll('/', '-')}.pdf');
+}

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'data.dart';
+import 'expenses.dart';
 import 'i18n.dart';
 import 'pdf_docs.dart';
 import 'report.dart';
@@ -79,7 +80,12 @@ class _AccountingTabState extends State<AccountingTab> {
                 .map((d) => Adj(d.id, d.data()))
                 .where((a) => a.month == _monthKey)
                 .toList();
-            return _body(ps, rates, pSnap.data?.docs ?? const [], adjs);
+            final exps = (rSnap.data?.docs ?? const <QueryDocumentSnapshot<Map<String, dynamic>>>[])
+                .where((d) => d.data()['exp'] == true)
+                .map((d) => Expense(d.id, d.data()))
+                .where((e) => e.month == _monthKey)
+                .toList();
+            return _body(ps, rates, pSnap.data?.docs ?? const [], adjs, exps);
           },
         );
       },
@@ -89,7 +95,8 @@ class _AccountingTabState extends State<AccountingTab> {
   String get _monthKey => '${_month.year}-${two(_month.month)}';
 
   Widget _body(List<PunchDoc> ps, Map<String, double> rates,
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> raw, List<Adj> adjs) {
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> raw, List<Adj> adjs,
+      List<Expense> exps) {
     // siteId de chaque pointage (gardé dans le document brut).
     final siteOf = {for (final d in raw) d.id: d.data()['siteId'] as String? ?? ''};
 
@@ -144,7 +151,8 @@ class _AccountingTabState extends State<AccountingTab> {
     }).toList()
       ..sort((a, b) => a.$2.compareTo(b.$2));
 
-    final margin = invTotal - payTotal;
+    final expTotal = exps.fold<double>(0, (s, e) => s + e.amount);
+    final margin = invTotal - payTotal - expTotal;
     final monthKey = '${_month.year}${two(_month.month)}';
 
     return ListView(
@@ -187,6 +195,7 @@ class _AccountingTabState extends State<AccountingTab> {
                 _kv(t('total_invoiced'), '${money(invTotal)} MRU'),
                 _kv(t('total_salaries'), '${money(payTotal)} MRU'),
                 _kv(t('net_to_pay'), '${money(netTotal)} MRU'),
+                _kv(t('total_expenses'), '${money(expTotal)} MRU'),
                 const Divider(),
                 _kv(t('margin'), '${money(margin)} MRU',
                     color: margin < 0 ? danger : okGreen, bold: true),
@@ -278,6 +287,8 @@ class _AccountingTabState extends State<AccountingTab> {
             ),
           );
         }),
+        const SizedBox(height: 18),
+        ExpensesSection(t: t, month: _month, items: exps, sites: widget.sites),
         const SizedBox(height: 12),
         Text(t('acc_note'), style: const TextStyle(color: muted, fontSize: 12)),
         const SizedBox(height: 12),
