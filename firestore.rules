@@ -20,6 +20,11 @@ service cloud.firestore {
     function isClient() { return hasProfile() && profile().role == 'client'; }
     // Le client ne voit que les données de son propre site.
     function mySite(data) { return isClient() && data.siteId == profile().siteId; }
+    // Agent affecté au même site que l'entrée (collègues du poste).
+    function sameSiteGuard(data) {
+      return isGuard() && profile().get('siteId', null) != null
+        && data.siteId == profile().siteId;
+    }
 
     // Comptes : chacun voit le sien, l'administration voit et gère tout.
     match /users/{uid} {
@@ -59,10 +64,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Main courante : l'agent écrit, l'administration lit tout.
+    // Main courante : confidentielle. Lecture réservée à l'administration,
+    // au client du site et aux agents affectés à ce même site.
     match /logs/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
-        || mySite(resource.data);
+        || mySite(resource.data) || sameSiteGuard(resource.data);
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
@@ -70,7 +76,7 @@ service cloud.firestore {
     // Photos de la main courante (preuves) : image JPEG compressée en base64.
     match /photos/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
-        || mySite(resource.data);
+        || mySite(resource.data) || sameSiteGuard(resource.data);
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid
         && request.resource.data.data is string && request.resource.data.data.size() < 950000;
       allow update, delete: if isAdmin();

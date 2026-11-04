@@ -98,8 +98,11 @@ class _LogbookScreenState extends State<LogbookScreen> {
   String _cat = 'round';
   final _shots = <Uint8List>[];
   static const _maxShots = 4;
-  late final Stream<QueryMap> _mine =
-      db.collection('logs').where('uid', isEqualTo: widget.me.id).snapshots();
+  // Agent affecté à un site : main courante du poste (lui et ses collègues).
+  // Sinon (agent mobile) : ses propres entrées.
+  late final Stream<QueryMap> _mine = widget.me.siteId != null
+      ? db.collection('logs').where('siteId', isEqualTo: widget.me.siteId).snapshots()
+      : db.collection('logs').where('uid', isEqualTo: widget.me.id).snapshots();
 
   T get t => widget.t;
 
@@ -251,6 +254,15 @@ class _LogbookScreenState extends State<LogbookScreen> {
             const SizedBox(height: 6),
             Text(t('log_note'), style: const TextStyle(color: muted, fontSize: 12)),
             const SizedBox(height: 20),
+            Row(children: [
+              const Icon(Icons.lock, size: 16, color: muted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(t('log_private'),
+                    style: const TextStyle(color: muted, fontSize: 12)),
+              ),
+            ]),
+            const SizedBox(height: 8),
             StreamBuilder<QueryMap>(
               stream: _mine,
               builder: (context, snap) {
@@ -261,7 +273,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
                 return Column(
                   children: logs
                       .take(30)
-                      .map((l) => LogTile(t: t, l: l, showName: false))
+                      .map((l) => LogTile(t: t, l: l, showName: l.uid != widget.me.id))
                       .toList(),
                 );
               },
