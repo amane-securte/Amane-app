@@ -10,6 +10,9 @@ import 'i18n.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
+/// Catégories où une photo est obligatoire (preuve de remise / d'état).
+const photoRequired = {'money', 'deposit', 'lost'};
+
 const logCategories = ['round', 'incident', 'visitor', 'keys', 'money', 'deposit', 'lost', 'files', 'instruction', 'other'];
 
 class LogDoc {
@@ -127,6 +130,10 @@ class _LogbookScreenState extends State<LogbookScreen> {
   void _save() {
     final txt = _text.text.trim();
     if (txt.isEmpty && _shots.isEmpty) return;
+    if (photoRequired.contains(_cat) && _shots.isEmpty) {
+      snack(context, t('photo_required'), color: danger);
+      return;
+    }
     final now = Timestamp.now();
     // Photos d'abord, puis l'entrée qui les référence. Sans attendre :
     // Firestore garde tout et l'envoie au retour du réseau.
@@ -185,6 +192,18 @@ class _LogbookScreenState extends State<LogbookScreen> {
               maxLines: 6,
               decoration: InputDecoration(hintText: t('log_hint')),
             ),
+            if (photoRequired.contains(_cat))
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(children: [
+                  const Icon(Icons.photo_camera, size: 16, color: danger),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(t('photo_required_hint'),
+                        style: const TextStyle(color: danger, fontSize: 12.5)),
+                  ),
+                ]),
+              ),
             const SizedBox(height: 8),
             Row(children: [
               OutlinedButton.icon(
