@@ -10,7 +10,7 @@ import 'i18n.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-const logCategories = ['round', 'incident', 'visitor', 'keys', 'money', 'lost', 'files', 'instruction', 'other'];
+const logCategories = ['round', 'incident', 'visitor', 'keys', 'money', 'deposit', 'lost', 'files', 'instruction', 'other'];
 
 class LogDoc {
   LogDoc(this.id, Map<String, dynamic> m)
@@ -318,6 +318,7 @@ IconData logIcon(String c) => switch (c) {
       'visitor' => Icons.person_pin,
       'keys' => Icons.key,
       'money' => Icons.payments,
+      'deposit' => Icons.inventory_2,
       'lost' => Icons.search,
       'files' => Icons.folder,
       'instruction' => Icons.assignment,
