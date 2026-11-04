@@ -90,9 +90,19 @@ class Site {
   Site(this.id, Map<String, dynamic> m)
       : name = _str(m['name']),
         client = _str(m['client']),
+        type = _str(m['type']),
+        services = [
+          if (m['services'] is List)
+            for (final x in m['services'] as List)
+              if (x is String) x,
+        ],
         fix = Fix.read(m, ''),
         radius = m['radius'] is num ? (m['radius'] as num).toInt() : 200;
   final String id, name, client;
+  /// Type de site (particulier, villa, institution, banque, boutique…).
+  final String type;
+  /// Prestations souscrites (voir services.dart).
+  final List<String> services;
   final Fix? fix;
   final int radius;
 }

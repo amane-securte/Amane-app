@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'data.dart';
 import 'expenses.dart';
 import 'people.dart';
+import 'services.dart';
 import 'i18n.dart';
 import 'pdf_docs.dart';
 import 'report.dart';
@@ -281,6 +282,10 @@ class _AccountingTabState extends State<AccountingTab> {
                   month: '${two(_month.month)}/${_month.year}',
                   hours: r.$3,
                   rate: r.$4,
+                  services: [
+                    for (final x in widget.sites.where((s) => s.id == r.$1).firstOrNull?.services ?? const <String>[])
+                      servicesFr[x] ?? x,
+                  ],
                 ),
                 rate: () => _editRate('s_${r.$1}', r.$2, r.$4, t('billing_rate')),
                 pdfLabel: t('pdf_invoice'),

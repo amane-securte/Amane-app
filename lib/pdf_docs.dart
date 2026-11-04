@@ -231,10 +231,12 @@ Future<void> printInvoice({
   required String month,
   required double hours,
   required double rate,
+  List<String> services = const [],
 }) async {
   final doc = pw.Document(theme: await _theme());
   final lh = await _Letterhead.load();
   final amount = hours * rate;
+  final label = services.isEmpty ? 'Prestation de gardiennage' : services.join(', ');
   doc.addPage(lh.page([
     _refLine('FACTURE', 'N° $number'),
     pw.Row(
@@ -258,7 +260,7 @@ Future<void> printInvoice({
     _table(
       ['Désignation', 'Heures', 'Tarif horaire', 'Montant'],
       [
-        ['Prestation de gardiennage – $siteName', _h(hours), _money(rate), _money(amount)],
+        ['$label – $siteName', _h(hours), _money(rate), _money(amount)],
       ],
       _money(amount),
     ),

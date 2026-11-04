@@ -15,6 +15,7 @@ import 'map_tab.dart';
 import 'messages.dart';
 import 'people.dart';
 import 'planning.dart';
+import 'services.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -665,12 +666,17 @@ class _AdminHomeState extends State<AdminHome> {
             ...sites.map((s) => Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
-                    leading: Icon(Icons.location_on,
+                    leading: Icon(s.type.isEmpty ? Icons.location_on : siteTypeIcon(s.type),
                         color: s.fix == null ? muted : okGreen),
                     title: Text(s.client.isEmpty ? s.name : '${s.name} · ${s.client}'),
-                    subtitle: Text(s.fix == null
-                        ? t('no_coords')
-                        : '${s.fix!.lat.toStringAsFixed(5)}, ${s.fix!.lng.toStringAsFixed(5)} · ${s.radius} m'),
+                    subtitle: Text([
+                      if (s.type.isNotEmpty) t('st_${s.type}'),
+                      if (s.services.isNotEmpty) s.services.map((x) => t('sv_$x')).join('، '),
+                      s.fix == null
+                          ? t('no_coords')
+                          : '${s.fix!.lat.toStringAsFixed(5)}, ${s.fix!.lng.toStringAsFixed(5)} · ${s.radius} m',
+                    ].join('\n')),
+                    isThreeLine: s.services.isNotEmpty,
                     onTap: () => _editSite(s),
                     trailing: s.fix == null
                         ? null
@@ -703,6 +709,8 @@ class _AdminHomeState extends State<AdminHome> {
     final radius = TextEditingController(text: '${s?.radius ?? 200}');
     String? error;
     var locating = false;
+    var type = s?.type ?? '';
+    final svc = {...?s?.services};
 
     final result = await showDialog<String>(
       context: context,
@@ -755,6 +763,36 @@ class _AdminHomeState extends State<AdminHome> {
                   decoration: InputDecoration(labelText: t('radius')),
                   keyboardType: TextInputType.number,
                 ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(t('site_type'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(height: 4),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  for (final ty in siteTypes)
+                    ChoiceChip(
+                      avatar: Icon(siteTypeIcon(ty), size: 16),
+                      label: Text(t('st_$ty')),
+                      selected: type == ty,
+                      onSelected: (_) => setD(() => type = ty),
+                    ),
+                ]),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(t('site_services'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(height: 4),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  for (final sv in services)
+                    FilterChip(
+                      avatar: Icon(serviceIcon(sv), size: 16),
+                      label: Text(t('sv_$sv')),
+                      selected: svc.contains(sv),
+                      onSelected: (on) => setD(() => on ? svc.add(sv) : svc.remove(sv)),
+                    ),
+                ]),
               ],
             ),
           ),
@@ -793,6 +831,8 @@ class _AdminHomeState extends State<AdminHome> {
         'radius': r < 20 ? 20 : r,
         'Lat': f?.lat,
         'Lng': f?.lng,
+        'type': type,
+        'services': [for (final sv in services) if (svc.contains(sv)) sv],
       };
       if (s == null) {
         await db.collection('sites').add(data);

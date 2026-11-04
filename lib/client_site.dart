@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'data.dart';
 import 'i18n.dart';
 import 'logbook.dart';
+import 'messages.dart';
 import 'pdf_docs.dart';
 import 'planning.dart';
 import 'report.dart';
+import 'services.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -82,6 +84,50 @@ class _ClientSiteTabState extends State<ClientSiteTab> {
                   onPressed: () => _report(context),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            StreamBuilder<DocumentSnapshotMap>(
+              stream: db.collection('sites').doc(widget.me.siteId).snapshots(),
+              builder: (context, sSnap) {
+                final m = sSnap.data?.data();
+                final site = m == null ? null : Site(widget.me.siteId!, m);
+                final mine = site?.services ?? const <String>[];
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: Text(t('my_services'),
+                                style: const TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                          if (site != null && site.type.isNotEmpty)
+                            pill(t('st_${site.type}'), navy),
+                        ]),
+                        const SizedBox(height: 6),
+                        if (mine.isEmpty)
+                          Text(t('no_services'), style: const TextStyle(color: muted))
+                        else
+                          Wrap(spacing: 6, runSpacing: 6, children: [
+                            for (final x in mine)
+                              Chip(
+                                avatar: Icon(serviceIcon(x), size: 16, color: navy),
+                                label: Text(t('sv_$x')),
+                              ),
+                          ]),
+                        const SizedBox(height: 6),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.add_shopping_cart),
+                          label: Text(t('request_service')),
+                          onPressed: () => requestService(context, t, widget.me, mine),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 14),
             _h(t('client_on_duty', {'n': '${onDuty.length}'}),

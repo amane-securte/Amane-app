@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'data.dart';
 import 'i18n.dart';
+import 'services.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -16,6 +17,7 @@ class Msg {
         kind = _s(m['kind']).isEmpty ? 'msg' : _s(m['kind']),
         text = _s(m['text']),
         service = m['service'] is num ? (m['service'] as num).toInt() : 0,
+        svc = _s(m['svc']),
         guards = [
           if (m['guards'] is List)
             for (final g in m['guards'] as List)
@@ -25,6 +27,8 @@ class Msg {
         seenClient = m['seenClient'] == true,
         at = m['at'] is Timestamp ? (m['at'] as Timestamp).toDate() : DateTime.now();
   final String id, clientUid, clientName, siteName, from, kind, text;
+  /// Prestation demandée (kind == 'service').
+  final String svc;
   final int service;
   final List<(String, String, int)> guards;
   final bool seenAdmin, seenClient;
@@ -88,7 +92,7 @@ class _Thread extends StatelessWidget {
       itemBuilder: (context, i) {
         final m = items[items.length - 1 - i];
         final me = m.from == mine;
-        final color = m.kind == 'rating'
+        final color = m.kind == 'rating' || m.kind == 'service'
             ? const Color(0xFFFFF8E1)
             : m.kind == 'note'
                 ? const Color(0xFFE3F2FD)
@@ -113,10 +117,19 @@ class _Thread extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(m.kind == 'rating' ? Icons.star_rate : Icons.sticky_note_2,
-                          size: 16, color: navy),
+                      Icon(
+                          m.kind == 'rating'
+                              ? Icons.star_rate
+                              : m.kind == 'service'
+                                  ? serviceIcon(m.svc)
+                                  : Icons.sticky_note_2,
+                          size: 16,
+                          color: navy),
                       const SizedBox(width: 4),
-                      Text(t(m.kind == 'rating' ? 'rate_title' : 'note_title'),
+                      Text(
+                          m.kind == 'service'
+                              ? '${t('service_req')} : ${t('sv_${m.svc}')}'
+                              : t(m.kind == 'rating' ? 'rate_title' : 'note_title'),
                           style: const TextStyle(fontWeight: FontWeight.w700, color: navy)),
                     ]),
                   ),
@@ -489,7 +502,9 @@ class _AdminMessagesTabState extends State<AdminMessagesTab> {
                     subtitle: Text(
                       last.kind == 'rating'
                           ? '⭐ ${t('rate_title')}'
-                          : last.text,
+                          : last.kind == 'service'
+                              ? '🛒 ${t('sv_${last.svc}')}'
+                              : last.text,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -552,5 +567,69 @@ class _AdminThreadPage extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+
+/// Le client demande une prestation supplémentaire (devis) depuis l'appli.
+Future<void> requestService(BuildContext context, T t, UserDoc me, List<String> mine) async {
+  var pick = '';
+  final note = TextEditingController();
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setS) => AlertDialog(
+        title: Text(t('request_service')),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final x in services)
+                  ChoiceChip(
+                    avatar: Icon(serviceIcon(x), size: 16),
+                    label: Text(t('sv_$x')),
+                    selected: pick == x,
+                    onSelected: (_) => setS(() => pick = x),
+                  ),
+              ]),
+              const SizedBox(height: 8),
+              TextField(
+                controller: note,
+                minLines: 2,
+                maxLines: 4,
+                decoration: InputDecoration(labelText: t('service_note'), hintText: t('service_note_hint')),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('cancel'))),
+          FilledButton(
+            onPressed: pick.isEmpty ? null : () => Navigator.pop(ctx, true),
+            child: Text(t('send')),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (ok != true) return;
+  try {
+    await db.collection('messages').add({
+      'clientUid': me.id,
+      'clientName': me.name,
+      'siteId': me.siteId,
+      'siteName': me.siteName,
+      'from': 'client',
+      'kind': 'service',
+      'svc': pick,
+      'text': note.text.trim(),
+      'seenAdmin': false,
+      'at': Timestamp.now(),
+    });
+    if (context.mounted) snack(context, t('service_sent'), color: okGreen);
+  } catch (e) {
+    if (context.mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
   }
 }
