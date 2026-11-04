@@ -5,6 +5,11 @@ name: Deploy Firebase (rules + notifications)
 # (clé JSON d'un compte de service du projet amane-securite).
 on:
   workflow_dispatch:
+    inputs:
+      targets:
+        description: "Cibles (firestore:rules, functions…)"
+        default: "firestore:rules,functions"
+
 
 jobs:
   deploy:
@@ -19,9 +24,10 @@ jobs:
       - name: Deploy
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TARGETS: ${{ inputs.targets || 'firestore:rules,functions' }}
         run: |
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           # Vérification sans afficher la clé : type, projet, compte.
           python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print('type:', d.get('type'), '| projet:', d.get('project_id'), '| compte:', d.get('client_email'))" "$RUNNER_TEMP/sa.json" || { echo "SECRET VIDE OU INVALIDE (taille: $(wc -c < "$RUNNER_TEMP/sa.json") octets)"; exit 1; }
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          npx -y firebase-tools@13 deploy --only functions --project amane-securite --non-interactive --force
+          npx -y firebase-tools@13 deploy --only "$TARGETS" --project amane-securite --non-interactive --force

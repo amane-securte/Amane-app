@@ -85,5 +85,18 @@ service cloud.firestore {
         && request.resource.data.status == 'open';
       allow update, delete: if isAdmin();
     }
+
+    // Messagerie client ↔ AMANE : un fil par client.
+    match /messages/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.clientUid == request.auth.uid);
+      allow create: if isAdmin()
+        || (isClient() && request.resource.data.clientUid == request.auth.uid
+            && request.resource.data.from == 'client');
+      // Le client peut seulement marquer les réponses comme lues.
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.clientUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenClient']));
+      allow delete: if isAdmin();
+    }
   }
 }
