@@ -19,6 +19,7 @@ const TYPES_AR = {
 const ACTIONS_AR = {
   patrol: "دورية أمان في الطريق إليك 🚓",
   police: "تم إبلاغ الشرطة 👮",
+  gendarmerie: "تم إبلاغ الدرك الوطني 🛡️",
   civil: "تم إبلاغ المطافئ 🚒",
   ambulance: "تم طلب الإسعاف 🚑",
 };

@@ -8,13 +8,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'geo.dart';
 
 /// Configuration du projet Firebase « amane-securite » (application Android).
-const firebaseOptions = FirebaseOptions(
+const _androidOptions = FirebaseOptions(
   apiKey: 'AIzaSyD2f7Zmx3kSwUZ0FE7X0cDM1h56vAJFIIM',
   appId: '1:1053668841593:android:c1277c6200182984205ca8',
   messagingSenderId: '1053668841593',
   projectId: 'amane-securite',
   storageBucket: 'amane-securite.firebasestorage.app',
 );
+
+/// Version web (iPhone, ordinateur) : https://amane-securite.web.app
+const _webOptions = FirebaseOptions(
+  apiKey: 'AIzaSyDXqmiS42hshRVV1G-z8fildsJOxo4-cBU',
+  appId: '1:1053668841593:web:f37c1a80453a7a08205ca8',
+  messagingSenderId: '1053668841593',
+  projectId: 'amane-securite',
+  authDomain: 'amane-securite.firebaseapp.com',
+  storageBucket: 'amane-securite.firebasestorage.app',
+  measurementId: 'G-YN8DHXSWE3',
+);
+
+const firebaseOptions = kIsWeb ? _webOptions : _androidOptions;
 
 /// Le compte du gérant est toujours administrateur.
 const ownerEmail = 'amane.services.securite@gmail.com';

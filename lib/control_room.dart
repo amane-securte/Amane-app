@@ -129,7 +129,7 @@ class ControlRoom {
   /// dont la notification permanente empêche Android d'arrêter l'appli.
   Future<bool> _startKeepAlive(String title, String text) async {
     if (_keepAlive != null) return true;
-    if (defaultTargetPlatform != TargetPlatform.android) return true;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return true;
     try {
       if (!await Geolocator.isLocationServiceEnabled()) return false;
       var perm = await Geolocator.checkPermission();

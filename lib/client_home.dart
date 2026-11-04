@@ -35,6 +35,8 @@ class ClientHome extends StatefulWidget {
 
 class _ClientHomeState extends State<ClientHome> {
   bool _busy = false;
+  /// Client à l'intérieur du pays (loin de Nouakchott) : km, sinon null.
+  double? _inlandKm;
   late final Stream<QueryMap> _mine =
       db.collection('alerts').where('uid', isEqualTo: widget.me.id).snapshots();
 
@@ -139,10 +141,65 @@ class _ClientHomeState extends State<ClientHome> {
       online = false; // part au retour du réseau
     }
     if (!mounted) return;
-    setState(() => _busy = false);
+    final km = kmFromNouakchott(f);
+    setState(() {
+      _busy = false;
+      if (km != null) _inlandKm = km > inlandKm ? km : null;
+    });
     if (r.error != null) showGpsError(context, t, r.error!);
     snack(context, t(online ? 'client_sent' : 'client_queued'),
         color: online ? okGreen : danger);
+    // Réseau absent ou faible : SOS aussi par SMS vers la salle de contrôle.
+    if (!online) {
+      final body = [
+        'SOS AMANE: ${t('need_$need')}',
+        me.name,
+        if (me.siteName.isNotEmpty) me.siteName,
+        if (note.isNotEmpty) note,
+        if (f != null) f.mapUrl,
+      ].join(' - ');
+      await openUrl('sms:$controlPhone?body=${Uri.encodeComponent(body)}');
+    }
+    // Hors de Nouakchott : la gendarmerie / police locale arrive plus vite.
+    if (km != null && km > inlandKm && mounted && need != 'request') {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.security, color: Color(0xFF2E5E3A), size: 44),
+          title: Text(t('inland_title')),
+          content: Text(t('inland_text', {'km': km.round().toString()})),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('close'))),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E5E3A)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                openUrl('tel:$gendarmerieNumber');
+              },
+              icon: const Icon(Icons.phone),
+              label: Text(t('call_gendarmerie')),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkInland();
+  }
+
+  bool _inlandChecked = false;
+  Future<void> _checkInland() async {
+    if (_inlandChecked) return;
+    _inlandChecked = true;
+    try {
+      final r = await getFix(seconds: 8);
+      final km = kmFromNouakchott(r.fix);
+      if (mounted && km != null && km > inlandKm) setState(() => _inlandKm = km);
+    } catch (_) {}
   }
 
   @override
@@ -237,13 +294,26 @@ class _ClientHomeState extends State<ClientHome> {
                   ...active.map(_statusCard),
                   const SizedBox(height: 12),
                 ],
+                if (_inlandKm != null)
+                  Card(
+                    color: const Color(0xFFE8F5E9),
+                    child: ListTile(
+                      leading: const Icon(Icons.location_on, color: Color(0xFF2E5E3A)),
+                      title: Text(t('inland_banner', {'km': _inlandKm!.round().toString()}),
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(t('inland_banner_sub')),
+                    ),
+                  ),
                 Text(t('client_calls'),
                     style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
+                if (_inlandKm != null)
+                  _callButton(Icons.security, t('call_gendarmerie'), 'tel:$gendarmerieNumber', const Color(0xFF2E5E3A)),
                 _callButton(Icons.shield, t('call_amane'), 'tel:$controlPhone', navy),
                 _callButton(Icons.local_police, t('call_police'), 'tel:$policeNumber', const Color(0xFF1F4E99)),
                 _callButton(Icons.local_fire_department, t('call_civil'), 'tel:$fireNumber', danger),
-                _callButton(Icons.security, t('call_gendarmerie'), 'tel:$gendarmerieNumber', const Color(0xFF2E5E3A)),
+                if (_inlandKm == null)
+                  _callButton(Icons.security, t('call_gendarmerie'), 'tel:$gendarmerieNumber', const Color(0xFF2E5E3A)),
                 emergencyButton(context, t),
                 if (past.isNotEmpty) ...[
                   const SizedBox(height: 20),
@@ -290,7 +360,7 @@ class _ClientHomeState extends State<ClientHome> {
 (String, Color, IconData) clientStatus(T t, AlertDoc a) {
   if (a.status == 'closed') return (t('cst_closed'), okGreen, Icons.check_circle);
   if (a.action.isNotEmpty) {
-    return (t('act_${a.action}_client'), navy, needIcon(a.action == 'civil' ? 'fire' : a.action == 'ambulance' ? 'medical' : a.action));
+    return (t('act_${a.action}_client'), navy, needIcon(a.action == 'civil' ? 'fire' : a.action == 'ambulance' ? 'medical' : a.action == 'gendarmerie' ? 'police' : a.action));
   }
   if (a.status == 'taken') return (t('cst_taken'), warn, Icons.support_agent);
   return (t('cst_open'), danger, Icons.hourglass_top);

@@ -85,3 +85,13 @@ Future<void> openGeoSettings(GeoErr e) async {
 
 double distanceM(Fix a, Fix b) =>
     Geolocator.distanceBetween(a.lat, a.lng, b.lat, b.lng);
+
+/// Centre de Nouakchott : au-delà de [inlandKm], le client est « à l'intérieur »
+/// (hors de portée des patrouilles AMANE) : gendarmerie / police locale d'abord.
+const nouakchott = Fix(18.0858, -15.9785, 0);
+const inlandKm = 35.0;
+
+/// Distance en km depuis Nouakchott, ou null sans position.
+double? kmFromNouakchott(Fix? f) => f == null ? null : distanceM(f, nouakchott) / 1000;
+
+bool isInland(Fix? f) => (kmFromNouakchott(f) ?? 0) > inlandKm;

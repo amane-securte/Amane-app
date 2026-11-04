@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -121,6 +122,16 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               const SizedBox(height: 8),
               Center(child: Image.asset('assets/logo_full_t.png', height: 210)),
+              if (kIsWeb)
+                Card(
+                  color: const Color(0xFFFFF8E1),
+                  child: ListTile(
+                    leading: const Icon(Icons.phone_iphone, color: Color(0xFFA9812F)),
+                    title: Text(t('web_install_title'),
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(t('web_install')),
+                  ),
+                ),
               const SizedBox(height: 20),
               SegmentedButton<bool>(
                 segments: [

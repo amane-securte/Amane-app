@@ -281,6 +281,8 @@ class _AdminHomeState extends State<AdminHome> {
             a.name,
             if (a.siteName.isNotEmpty) a.siteName,
             if (a.fromClient) t('from_client'),
+            if (isInland(a.fix))
+              t('inland_pill', {'km': kmFromNouakchott(a.fix)!.round().toString()}),
             '${dm(a.at)} ${hm(a.at)}',
           ].join('\n'),
           textAlign: TextAlign.center,
@@ -344,6 +346,9 @@ class _AdminHomeState extends State<AdminHome> {
               children: [
                 const Icon(Icons.warning_amber_rounded, color: danger),
                 const SizedBox(width: 6),
+                if (isInland(a.fix))
+                  pill(t('inland_pill', {'km': kmFromNouakchott(a.fix)!.round().toString()}),
+                      const Color(0xFF2E5E3A)),
                 if (a.fromClient) ...[
                   pill(t('from_client'), navy),
                   const SizedBox(width: 6),
@@ -412,7 +417,7 @@ class _AdminHomeState extends State<AdminHome> {
                     if (act == 'civil' || act == 'ambulance') await openUrl('tel:$fireNumber');
                   },
                   itemBuilder: (_) => [
-                    for (final act in ['patrol', 'police', 'civil', 'ambulance'])
+                    for (final act in ['patrol', 'police', 'gendarmerie', 'civil', 'ambulance'])
                       PopupMenuItem(value: act, child: Text(t('act_${act}_menu'))),
                   ],
                   child: Chip(

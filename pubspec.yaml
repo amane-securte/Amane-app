@@ -1,7 +1,7 @@
 name: amane_app
 description: "Application AMANE Sécurité privée – أمان للأمن الخصوصي"
 publish_to: 'none'
-version: 0.9.7+24
+version: 0.9.8+25
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -41,3 +41,8 @@ flutter_launcher_icons:
   ios: false
   image_path: assets/icon.png
   min_sdk_android: 21
+  web:
+    generate: true
+    image_path: assets/icon.png
+    background_color: "#f7f2e7"
+    theme_color: "#0f2a40"

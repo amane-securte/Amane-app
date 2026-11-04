@@ -32,7 +32,7 @@ class ShiftTracker {
         return;
       }
       final LocationSettings settings;
-      if (defaultTargetPlatform == TargetPlatform.android) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
         settings = AndroidSettings(
           accuracy: LocationAccuracy.high,
           distanceFilter: 50,

@@ -64,3 +64,37 @@ jobs:
             --prerelease \
             --title "Amane – نسخة تجريبية / version de test" \
             --notes "Build ${{ github.run_number }} – ${GITHUB_SHA::7}"
+
+  # Version web (iPhone, ordinateur) : https://amane-securite.web.app
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate web platform files
+        run: |
+          flutter create --platforms=web --org mr.amane --project-name amane_app .
+          rm -f test/widget_test.dart
+          flutter pub get
+          dart run flutter_launcher_icons
+          python3 tool/patch_web.py
+
+      - name: Build web
+        run: flutter build web --release --no-tree-shake-icons
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Deploy to Firebase Hosting
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx -y firebase-tools@13 deploy --only hosting --project amane-securite --non-interactive
