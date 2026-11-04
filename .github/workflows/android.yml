@@ -78,7 +78,7 @@ jobs:
 
       - name: Generate web platform files
         run: |
-          flutter create --platforms=web --org mr.amane --project-name amane_app .
+          flutter create --platforms=android,web --org mr.amane --project-name amane_app .
           rm -f test/widget_test.dart
           flutter pub get
           dart run flutter_launcher_icons
