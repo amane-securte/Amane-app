@@ -1,0 +1,29 @@
+name: Firebase web app config
+
+# Lancement manuel : crée (une seule fois) l'application web Firebase
+# et affiche sa configuration publique (apiKey, appId…).
+on:
+  workflow_dispatch:
+
+jobs:
+  webapp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Create or read the web app
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          FB="npx -y firebase-tools@13"
+          $FB apps:list WEB --project amane-securite --json > apps.json || true
+          ID=$(python3 -c "import json;d=json.load(open('apps.json'));r=d.get('result') or [];print(r[0]['appId'] if r else '')" 2>/dev/null || true)
+          if [ -z "$ID" ]; then
+            $FB apps:create WEB "Amane Web" --project amane-securite --json > created.json
+            ID=$(python3 -c "import json;print(json.load(open('created.json'))['result']['appId'])")
+          fi
+          echo "APP_ID=$ID"
+          $FB apps:sdkconfig WEB "$ID" --project amane-securite
