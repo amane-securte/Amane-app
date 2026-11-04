@@ -10,7 +10,7 @@ import 'i18n.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-const logCategories = ['round', 'incident', 'visitor', 'keys', 'instruction', 'other'];
+const logCategories = ['round', 'incident', 'visitor', 'keys', 'money', 'lost', 'files', 'instruction', 'other'];
 
 class LogDoc {
   LogDoc(this.id, Map<String, dynamic> m)
@@ -171,6 +171,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
               children: [
                 for (final c in logCategories)
                   ChoiceChip(
+                    avatar: Icon(logIcon(c), size: 16),
                     label: Text(t('cat_$c')),
                     selected: _cat == c,
                     onSelected: (_) => setState(() => _cat = c),
@@ -309,3 +310,16 @@ class PhotoThumb extends StatelessWidget {
     );
   }
 }
+
+
+IconData logIcon(String c) => switch (c) {
+      'round' => Icons.directions_walk,
+      'incident' => Icons.report,
+      'visitor' => Icons.person_pin,
+      'keys' => Icons.key,
+      'money' => Icons.payments,
+      'lost' => Icons.search,
+      'files' => Icons.folder,
+      'instruction' => Icons.assignment,
+      _ => Icons.notes,
+    };
