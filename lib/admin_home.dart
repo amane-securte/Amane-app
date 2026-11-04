@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'data.dart';
 import 'geo.dart';
 import 'accounting.dart';
+import 'control_room.dart';
 import 'emergency.dart';
 import 'guard_home.dart';
 import 'logbook.dart';
@@ -47,19 +47,28 @@ class _AdminHomeState extends State<AdminHome> {
               DateTime.now().subtract(const Duration(hours: 24))))
       .snapshots();
 
-  final _seenAlerts = <String>{};
   final _placed = <String>{};
   StreamSubscription<QueryMap>? _placeSub;
+  StreamSubscription<AlertDoc>? _alarmSub;
 
   @override
   void dispose() {
     _placeSub?.cancel();
+    _alarmSub?.cancel();
+    ControlRoom.instance.detach();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    // Écoute des SOS (sirène), y compris en arrière-plan si le mode
+    // « salle de contrôle » est activé.
+    final cr = ControlRoom.instance;
+    cr.attach(title: t('cr_notif_title'), text: t('cr_notif_text'));
+    _alarmSub = cr.newAlerts.listen((a) {
+      if (mounted) _alarm(a);
+    });
     // Reporte sur le site la position envoyée par le téléphone du client.
     _placeSub = db.collection('users').snapshots().listen((q) async {
       for (final d in q.docs) {
@@ -80,7 +89,6 @@ class _AdminHomeState extends State<AdminHome> {
       }
     }, onError: (_) {});
   }
-  bool _alertsLoaded = false;
 
   T get t => T(widget.prefs.lang);
 
@@ -155,7 +163,6 @@ class _AdminHomeState extends State<AdminHome> {
             .map((d) => AlertDoc(d.id, d.data()))
             .toList()
           ..sort((a, b) => b.at.compareTo(a.at));
-        _notifyNewAlerts(aSnap.data, alerts);
         return StreamBuilder<QueryMap>(
           stream: _punches,
           builder: (context, pSnap) {
@@ -168,9 +175,45 @@ class _AdminHomeState extends State<AdminHome> {
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: emergencyButton(context, t),
+                ValueListenableBuilder<bool>(
+                  valueListenable: ControlRoom.instance.enabled,
+                  builder: (context, on, _) => Card(
+                    color: on ? const Color(0xFFE8F5E9) : null,
+                    child: SwitchListTile(
+                      secondary: Icon(Icons.notifications_active,
+                          color: on ? okGreen : muted),
+                      title: Text(t('cr_title'),
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(t(on ? 'cr_on' : 'cr_off')),
+                      value: on,
+                      onChanged: (v) async {
+                        final ok = await ControlRoom.instance.setEnabled(v,
+                            title: t('cr_notif_title'), text: t('cr_notif_text'));
+                        if (!ok && context.mounted) {
+                          snack(context, t('cr_need_gps'), color: danger);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.volume_up, color: danger),
+                      label: Text(t('cr_test')),
+                      onPressed: () async {
+                        await ControlRoom.instance.ring();
+                        if (context.mounted) {
+                          snack(context, t('cr_test_hint'),
+                              action: SnackBarAction(
+                                  label: t('alarm_silence'),
+                                  onPressed: ControlRoom.instance.silence));
+                        }
+                      },
+                    ),
+                    emergencyButton(context, t),
+                  ],
                 ),
                 _h(t('alerts'), color: alerts.isEmpty ? null : danger),
                 if (alerts.isEmpty)
@@ -212,22 +255,6 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
 
-  /// Vibre quand une nouvelle alerte arrive pendant que l'écran est ouvert.
-  void _notifyNewAlerts(QueryMap? snap, List<AlertDoc> alerts) {
-    if (snap == null) return;
-    final fresh = alerts
-        .where((a) => a.status == 'open' && !_seenAlerts.contains(a.id))
-        .toList();
-    _seenAlerts.addAll(alerts.map((a) => a.id));
-    if (_alertsLoaded && fresh.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _alarm(fresh.first);
-      });
-    }
-    _alertsLoaded = true;
-  }
-
   bool _alarmOpen = false;
 
   /// Alarme plein écran : son et vibration répétés jusqu'à ce que
@@ -235,25 +262,6 @@ class _AdminHomeState extends State<AdminHome> {
   Future<void> _alarm(AlertDoc a) async {
     if (_alarmOpen) return;
     _alarmOpen = true;
-    var ringing = true;
-    final siren = AudioPlayer();
-    try {
-      await siren.setAudioContext(AudioContext(
-        android: const AudioContextAndroid(
-          usageType: AndroidUsageType.alarm,
-          contentType: AndroidContentType.sonification,
-          audioFocus: AndroidAudioFocus.gainTransient,
-        ),
-      ));
-      await siren.setReleaseMode(ReleaseMode.loop);
-      await siren.play(AssetSource('siren.wav'), volume: 1.0);
-    } catch (_) {}
-    () async {
-      while (ringing && mounted) {
-        HapticFeedback.heavyImpact();
-        await Future.delayed(const Duration(milliseconds: 900));
-      }
-    }();
     final f = a.fix;
     final kind = t(a.fromClient ? 'need_${a.type}' : 'ty_${a.type}');
     final go = await showDialog<String>(
@@ -302,10 +310,8 @@ class _AdminHomeState extends State<AdminHome> {
         ],
       ),
     );
-    ringing = false;
     _alarmOpen = false;
-    siren.stop().catchError((_) {});
-    siren.dispose();
+    ControlRoom.instance.silence();
     if (go == 'take' || go == 'call' || go == 'map') {
       await db
           .collection('alerts')
