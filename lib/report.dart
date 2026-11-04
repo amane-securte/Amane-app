@@ -96,7 +96,7 @@ Future<void> monthlyReport({
     byAgent: agent.values.toList()..sort(byHours),
     incidents: [
       for (final l in logs.where((l) => l.category == 'incident'))
-        (_d(l.at), l.siteName, '${l.name} : ${l.text}'),
+        (_d(l.at), l.siteName, '${l.name} : ${l.text}${l.photos.isEmpty ? '' : ' [${l.photos.length} photo(s)]'}'),
     ],
     alerts: [
       for (final a in alerts)

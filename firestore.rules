@@ -67,6 +67,15 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Photos de la main courante (preuves) : image JPEG compressée en base64.
+    match /photos/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
+        || mySite(resource.data);
+      allow create: if isGuard() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.data is string && request.resource.data.data.size() < 950000;
+      allow update, delete: if isAdmin();
+    }
+
     // Taux (salaires, tarifs) : réservés à l'administration.
     match /rates/{id} {
       allow read, write: if isAdmin();
