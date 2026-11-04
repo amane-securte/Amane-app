@@ -91,3 +91,25 @@ IconData siteTypeIcon(String s) => switch (s) {
       'event' => Icons.event,
       _ => Icons.location_on,
     };
+
+/// Banques en activité en Mauritanie (clients « banque »).
+const mauritanianBanks = [
+  'Banque Populaire de Mauritanie (BPM)',
+  'Banque Mauritanienne pour l\'Investissement (BMI)',
+  'Banque Mauritanienne pour le Commerce International (BMCI)',
+  'Banque pour le Commerce et l\'Industrie (BCI)',
+  'Attijari Bank Mauritanie (ABM)',
+  'Banque El Amana (BEA)',
+  'Banque Al Wava Mauritanienne Islamique (BAMIS)',
+  'Banque Islamique de Mauritanie (BIM)',
+  'Banque de Financement et d\'Investissement (BFI)',
+  'Générale de Banque de Mauritanie (GBM)',
+  'Banque Nationale de Mauritanie (BNM)',
+  'International Bank of Mauritania (IBM)',
+  'Société Générale Mauritanie (SGM)',
+  'Orabank Mauritanie',
+  'Chinguitty Bank',
+  'Banque Mauritanienne des Transactions Saines (BMS)',
+  'Algerian Union Bank (AUB)',
+  'QNB Mauritanie (QNBM)',
+];

@@ -778,6 +778,27 @@ class _AdminHomeState extends State<AdminHome> {
                       onSelected: (_) => setD(() => type = ty),
                     ),
                 ]),
+                if (type == 'bank') ...[
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: mauritanianBanks.contains(client.text) ? client.text : null,
+                    isExpanded: true,
+                    decoration: InputDecoration(labelText: t('pick_bank')),
+                    items: [
+                      for (final b in mauritanianBanks)
+                        DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis)),
+                    ],
+                    onChanged: (v) => setD(() {
+                      if (v == null) return;
+                      client.text = v;
+                      if (name.text.trim().isEmpty) {
+                        final short = RegExp(r'\(([^)]+)\)').firstMatch(v)?.group(1) ?? v;
+                        name.text = '$short – ';
+                      }
+                    }),
+                  ),
+                  Text(t('pick_bank_hint'), style: const TextStyle(color: muted, fontSize: 12)),
+                ],
                 const SizedBox(height: 12),
                 Align(
                   alignment: AlignmentDirectional.centerStart,
