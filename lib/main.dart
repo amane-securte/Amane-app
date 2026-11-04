@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'admin_home.dart';
 import 'auth_screen.dart';
 import 'client_home.dart';
+import 'consent.dart';
 import 'data.dart';
 import 'guard_home.dart';
 import 'i18n.dart';
@@ -91,6 +92,9 @@ class RoleGate extends StatelessWidget {
         }
         if (isOwner || me.role == 'admin') {
           return AdminHome(prefs: prefs, me: me);
+        }
+        if ((me.role == 'guard' || me.role == 'client') && needsConsent(doc.data() ?? const {})) {
+          return ConsentScreen(prefs: prefs, me: me);
         }
         if (me.role == 'guard') return GuardHome(prefs: prefs, me: me);
         if (me.role == 'client') return ClientHome(prefs: prefs, me: me);

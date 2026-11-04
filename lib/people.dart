@@ -6,9 +6,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'consent.dart';
 import 'data.dart';
 import 'geo.dart';
 import 'i18n.dart';
+import 'pdf_docs.dart';
+import 'services.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -100,6 +103,11 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
   var job = 'guard';
   final mission = TextEditingController();
   final monthly = TextEditingController();
+  final idNo = TextEditingController();
+  final address = TextEditingController();
+  final contract = TextEditingController();
+  final emergency = TextEditingController();
+  final rep = TextEditingController();
   String? siteId;
   final siteName = TextEditingController();
   // Nouveau site : position prise ici (« here ») ou plus tard (« later » ;
@@ -169,6 +177,11 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
             await db.collection('users').doc(uid).update({
               'role': role,
               if (role != 'client') 'job': job,
+              if (idNo.text.trim().isNotEmpty) 'idNo': idNo.text.trim(),
+              if (address.text.trim().isNotEmpty) 'address': address.text.trim(),
+              if (contract.text.trim().isNotEmpty) 'contractNo': contract.text.trim(),
+              if (role != 'client' && emergency.text.trim().isNotEmpty) 'emergency': emergency.text.trim(),
+              if (role == 'client' && rep.text.trim().isNotEmpty) 'rep': rep.text.trim(),
               if (role != 'client' && mission.text.trim().isNotEmpty) 'mission': mission.text.trim(),
               if (sid != null) 'siteId': sid,
               if (sid != null) 'siteName': sName,
@@ -262,6 +275,24 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
                   controller: pass,
                   textDirection: TextDirection.ltr,
                   decoration: InputDecoration(labelText: t('add_pass')),
+                ),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text(t('info_more'), style: const TextStyle(fontSize: 14)),
+                  subtitle: Text(t('info_more_sub'), style: const TextStyle(fontSize: 11.5, color: muted)),
+                  children: [
+                    if (role == 'client')
+                      TextField(controller: rep, decoration: InputDecoration(labelText: t('info_rep'))),
+                    TextField(
+                      controller: idNo,
+                      textDirection: TextDirection.ltr,
+                      decoration: InputDecoration(labelText: t(role == 'client' ? 'info_nif' : 'info_id')),
+                    ),
+                    TextField(controller: address, decoration: InputDecoration(labelText: t('info_address'))),
+                    TextField(controller: contract, decoration: InputDecoration(labelText: t('info_contract'))),
+                    if (role != 'client')
+                      TextField(controller: emergency, decoration: InputDecoration(labelText: t('info_emergency'))),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String?>(
@@ -450,4 +481,108 @@ Future<void> editStaff(BuildContext context, T t, UserDoc u) async {
   await db.collection('rates').doc('m_${u.id}').set({'rate': num_(monthly) ?? 0});
   await db.collection('rates').doc('g_${u.id}').set({'rate': num_(hourly) ?? 0});
   if (context.mounted) snack(context, t('saved'), color: okGreen);
+}
+
+/// Fiche d'un employé ou d'un client : identité, adresse, contrat…
+/// et formulaire de consentement PDF pré-rempli.
+Future<void> editInfo(BuildContext context, T t, UserDoc u, List<Site> sites) async {
+  final client = u.role == 'client';
+  final idNo = TextEditingController(text: u.idNo);
+  final address = TextEditingController(text: u.address);
+  final contract = TextEditingController(text: u.contractNo);
+  final emergency = TextEditingController(text: u.emergency);
+  final rep = TextEditingController(text: u.rep);
+  final v = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(u.name),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (client)
+            TextField(controller: rep, decoration: InputDecoration(labelText: t('info_rep'))),
+          TextField(
+            controller: idNo,
+            textDirection: TextDirection.ltr,
+            decoration: InputDecoration(labelText: t(client ? 'info_nif' : 'info_id')),
+          ),
+          TextField(controller: address, decoration: InputDecoration(labelText: t('info_address'))),
+          TextField(controller: contract, decoration: InputDecoration(labelText: t('info_contract'))),
+          if (!client)
+            TextField(controller: emergency, decoration: InputDecoration(labelText: t('info_emergency'))),
+          const SizedBox(height: 10),
+          Row(children: [
+            Icon(u.consentAt == null ? Icons.pending : Icons.verified,
+                color: u.consentAt == null ? warn : okGreen, size: 18),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                u.consentAt == null
+                    ? t('consent_none')
+                    : t('consent_done', {'d': '${dm(u.consentAt!)}/${u.consentAt!.year} ${hm(u.consentAt!)}'}),
+                style: const TextStyle(fontSize: 12.5),
+              ),
+            ),
+          ]),
+        ]),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('cancel'))),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.picture_as_pdf, color: danger),
+          label: Text(t('consent_pdf')),
+          onPressed: () => Navigator.pop(ctx, 'pdf'),
+        ),
+        FilledButton(onPressed: () => Navigator.pop(ctx, 'save'), child: Text(t('save'))),
+      ],
+    ),
+  );
+  if (v == null) return;
+  final data = {
+    'idNo': idNo.text.trim(),
+    'address': address.text.trim(),
+    'contractNo': contract.text.trim(),
+    if (!client) 'emergency': emergency.text.trim(),
+    if (client) 'rep': rep.text.trim(),
+  };
+  await db.collection('users').doc(u.id).update(data);
+  if (v == 'save') {
+    if (context.mounted) snack(context, t('saved'), color: okGreen);
+    return;
+  }
+  final site = sites.where((s) => s.id == u.siteId).firstOrNull;
+  final now = DateTime.now();
+  final date = '${two(now.day)}/${two(now.month)}/${now.year}';
+  final fields = <(String, String)>[
+    if (client) ...[
+      ('Client · الزبون', u.name),
+      ('Représentant · الممثّل', rep.text.trim()),
+      ('NIF / RC · الرقم الضريبي', idNo.text.trim()),
+      ('Site protégé · الموقع المحروس', site?.name ?? u.siteName),
+      ('Type de site · نوع الموقع', site == null || site.type.isEmpty ? '' : (siteTypesFr[site.type] ?? site.type)),
+      ('Prestations · الخدمات', [for (final x in site?.services ?? const <String>[]) servicesFr[x] ?? x].join(', ')),
+      ('Adresse · العنوان', address.text.trim()),
+    ] else ...[
+      ('Nom et prénom · الاسم', u.name),
+      ('Poste · الوظيفة', jobsFr[u.job] ?? u.job),
+      ('Mission · المهمة', u.mission),
+      ("N° de pièce d'identité (NNI) · رقم بطاقة التعريف", idNo.text.trim()),
+      ('Adresse · العنوان', address.text.trim()),
+      ('Site · الموقع', site?.name ?? u.siteName),
+      ('Personne à prévenir · من يُتصل به عند الطوارئ', emergency.text.trim()),
+    ],
+    ('Téléphone (identifiant) · رقم الدخول', u.phone),
+    ('N° de contrat · رقم العقد', contract.text.trim()),
+    ('Date · التاريخ', date),
+  ];
+  try {
+    await printConsent(
+      client: client,
+      fields: fields,
+      textFr: consentTextFr(client),
+      textAr: consentTextAr(client),
+      date: date,
+    );
+  } catch (e) {
+    if (context.mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+  }
 }

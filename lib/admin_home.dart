@@ -460,7 +460,17 @@ class _AdminHomeState extends State<AdminHome> {
         Widget tile(UserDoc u) => Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                title: Text(u.name),
+                title: Row(children: [
+                  Flexible(child: Text(u.name, overflow: TextOverflow.ellipsis)),
+                  if (u.role == 'guard' || u.role == 'client') ...[
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: t(u.consentAt == null ? 'consent_none' : 'consent_ok'),
+                      child: Icon(u.consentAt == null ? Icons.pending_outlined : Icons.verified,
+                          size: 16, color: u.consentAt == null ? warn : okGreen),
+                    ),
+                  ],
+                ]),
                 subtitle: Text(
                   [
                     if (u.role != 'client') t('job_${u.job}'),
@@ -481,6 +491,7 @@ class _AdminHomeState extends State<AdminHome> {
                       PopupMenuItem(value: 'invite', child: Text(t('invite_again'))),
                     if (u.role != 'client')
                       PopupMenuItem(value: 'job', child: Text(t('edit_staff'))),
+                    PopupMenuItem(value: 'info', child: Text(t('info_menu'))),
                     PopupMenuItem(value: 'site', child: Text(t('set_site'))),
                     if (u.role == 'guard')
                       PopupMenuItem(value: 'admin', child: Text(t('make_admin'))),
@@ -589,6 +600,8 @@ class _AdminHomeState extends State<AdminHome> {
         await openUrl('tel:${u.phone}');
       case 'job':
         if (mounted) await editStaff(context, t, u);
+      case 'info':
+        if (mounted) await editInfo(context, t, u, sites);
       case 'site':
         await _assign(u, sites);
       case 'admin':

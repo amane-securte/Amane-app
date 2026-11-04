@@ -77,8 +77,19 @@ class UserDoc {
         job = _str(m['job']).isNotEmpty
             ? _str(m['job'])
             : (_str(m['role']) == 'admin' ? 'manager' : 'guard'),
+        idNo = _str(m['idNo']),
+        address = _str(m['address']),
+        contractNo = _str(m['contractNo']),
+        emergency = _str(m['emergency']),
+        rep = _str(m['rep']),
+        consentAt = _date(m['consentAt']),
         siteId = m['siteId'] is String ? m['siteId'] as String : null;
   final String id, name, phone, role, siteName;
+  /// Fiche : pièce d'identité (NNI), adresse, n° de contrat,
+  /// personne à prévenir (agents), représentant (clients).
+  final String idNo, address, contractNo, emergency, rep;
+  /// Date d'acceptation électronique des conditions (null = pas encore).
+  final DateTime? consentAt;
   /// Poste (guard, bodyguard, driver, accountant, manager, dg…).
   final String job;
   /// Mission en cours (ex. : protection de l'ambassadeur X, chauffeur de la DG).

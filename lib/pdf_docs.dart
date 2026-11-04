@@ -503,3 +503,110 @@ Future<void> printExpenses({
   await Printing.layoutPdf(
       onLayout: (_) => doc.save(), name: 'Depenses-${month.replaceAll('/', '-')}.pdf');
 }
+
+/// Formulaire de consentement pré-rempli (agent ou client), bilingue,
+/// sur papier à en-tête, à imprimer et faire signer.
+/// [fields] : (libellé FR · AR, valeur) ; une valeur vide laisse une ligne à remplir.
+Future<void> printConsent({
+  required bool client,
+  required List<(String, String)> fields,
+  required List<(String, List<String>)> textFr,
+  required List<(String, List<String>)> textAr,
+  required String date,
+}) async {
+  final doc = pw.Document(theme: await _theme());
+  final lh = await _Letterhead.load();
+  const rtl = pw.TextDirection.rtl;
+  pw.Widget fr((String, List<String>) p) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(height: 5),
+          pw.Text(p.$1, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10.5, color: _navy)),
+          for (final l in p.$2) pw.Bullet(text: l, style: const pw.TextStyle(fontSize: 9.5)),
+        ],
+      );
+  pw.Widget ar((String, List<String>) p) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.end,
+        children: [
+          pw.SizedBox(height: 5),
+          pw.Text(p.$1,
+              textDirection: rtl,
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11, color: _navy)),
+          for (final l in p.$2)
+            pw.Text('• $l', textDirection: rtl, textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 10)),
+        ],
+      );
+  final title = client
+      ? "CONDITIONS D'UTILISATION – CLIENT"
+      : "CONSENTEMENT DE L'EMPLOYÉ(E)";
+  final titleAr = client ? 'شروط استعمال التطبيق – الزبون' : 'نموذج موافقة الموظف';
+  final body = <pw.Widget>[
+    _refLine(title, date),
+    pw.Align(
+      alignment: pw.Alignment.centerRight,
+      child: pw.Text(titleAr,
+          textDirection: rtl, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13, color: _navy)),
+    ),
+    pw.SizedBox(height: 8),
+    pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+      columnWidths: {0: const pw.FlexColumnWidth(2), 1: const pw.FlexColumnWidth(3)},
+      children: [
+        for (final f in fields)
+          pw.TableRow(children: [
+            pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(f.$1, style: const pw.TextStyle(fontSize: 9.5))),
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(5),
+              child: pw.Text(f.$2.isEmpty ? ' ' : f.$2,
+                  style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold)),
+            ),
+          ]),
+      ],
+    ),
+    _section('Texte français'),
+    for (final p in textFr) fr(p),
+    _section('النص العربي'),
+    for (final p in textAr) ar(p),
+    pw.SizedBox(height: 12),
+    pw.Text("J'ai lu et compris ce document et j'en accepte les termes.", style: const pw.TextStyle(fontSize: 10)),
+    pw.Align(
+      alignment: pw.Alignment.centerRight,
+      child: pw.Text('قرأت هذا النموذج وفهمته، وأوافق على ما فيه.', textDirection: rtl, style: const pw.TextStyle(fontSize: 10.5)),
+    ),
+    pw.SizedBox(height: 14),
+    pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          pw.Text(client ? 'Signature du client' : "Signature de l'employé(e)",
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text(client ? 'توقيع الزبون' : 'توقيع الموظف', textDirection: rtl),
+          pw.SizedBox(height: 50),
+        ]),
+        pw.Column(children: [
+          pw.Text('Le Directeur Général', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text('المدير العام', textDirection: rtl),
+          pw.Text('Sidi Abdella Sylla'),
+          pw.Text('سيد عبدالله سيلا', textDirection: rtl),
+          pw.SizedBox(height: 40),
+        ]),
+      ],
+    ),
+    pw.Text('Établi en deux exemplaires · يُحرَّر في نسختين', style: const pw.TextStyle(color: _grey, fontSize: 9)),
+  ];
+  doc.addPage(pw.MultiPage(
+    pageTheme: pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.zero,
+      buildBackground: lh.background,
+    ),
+    header: (c) => pw.Padding(padding: const pw.EdgeInsets.only(bottom: 10), child: lh.header()),
+    footer: (c) => lh.footer(),
+    build: (c) => [
+      for (final w in body)
+        pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 40), child: w),
+    ],
+  ));
+  await Printing.layoutPdf(onLayout: (_) => doc.save(), name: '${client ? 'Conditions-client' : 'Consentement'}-$date.pdf');
+}
