@@ -6,6 +6,7 @@ import 'emergency.dart';
 import 'geo.dart';
 import 'i18n.dart';
 import 'client_site.dart';
+import 'messages.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -147,7 +148,7 @@ class _ClientHomeState extends State<ClientHome> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: amaneAppBar(
           context,
@@ -160,6 +161,7 @@ class _ClientHomeState extends State<ClientHome> {
               Tab(text: t('ctab_sos')),
               Tab(text: t('ctab_site')),
               Tab(text: t('ctab_invoices')),
+              Tab(text: t('ctab_msg')),
             ],
           ),
         ),
@@ -168,6 +170,7 @@ class _ClientHomeState extends State<ClientHome> {
             _sosTab(),
             ClientSiteTab(t: t, me: me),
             ClientInvoicesTab(t: t, me: me),
+            ClientMessagesTab(t: t, me: me),
           ],
         ),
       ),

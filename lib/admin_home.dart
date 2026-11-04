@@ -12,6 +12,7 @@ import 'emergency.dart';
 import 'guard_home.dart';
 import 'logbook.dart';
 import 'map_tab.dart';
+import 'messages.dart';
 import 'people.dart';
 import 'planning.dart';
 import 'i18n.dart';
@@ -95,7 +96,7 @@ class _AdminHomeState extends State<AdminHome> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 7,
+      length: 8,
       child: Scaffold(
         appBar: amaneAppBar(
           context,
@@ -114,6 +115,7 @@ class _AdminHomeState extends State<AdminHome> {
               Tab(text: t('tab_guards')),
               Tab(text: t('tab_sites')),
               Tab(text: t('tab_acc')),
+              Tab(text: t('tab_msg')),
             ],
           ),
         ),
@@ -143,6 +145,7 @@ class _AdminHomeState extends State<AdminHome> {
                     _guardsTab(sites, users),
                     _sitesTab(sites),
                     AccountingTab(t: t, users: users, sites: sites),
+                    AdminMessagesTab(t: t),
                   ],
                 );
               },
