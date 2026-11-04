@@ -19,6 +19,7 @@ const services = [
   'homes', // sécurisation de domiciles
   'financial', // sécurisation d'agences financières
   'atm', // sécurisation de distributeurs / bureaux de change
+  'health', // sécurisation d'hôpitaux et cliniques
   'vip', // protection de personnalités
   'other', // autres services
 ];
@@ -41,6 +42,7 @@ const servicesFr = {
   'homes': 'Sécurisation de domiciles',
   'financial': "Sécurisation d'agences financières",
   'atm': 'Sécurisation de distributeurs et bureaux de change',
+  'health': "Sécurisation d'hôpitaux et cliniques",
   'vip': 'Protection de personnalités',
   'other': 'Autres services',
 };
@@ -63,12 +65,13 @@ IconData serviceIcon(String s) => switch (s) {
       'homes' => Icons.home,
       'financial' => Icons.currency_exchange,
       'atm' => Icons.atm,
+      'health' => Icons.local_hospital,
       'vip' => Icons.star,
       _ => Icons.miscellaneous_services,
     };
 
 /// Types de sites / clients.
-const siteTypes = ['individual', 'villa', 'institution', 'bank', 'agency', 'shop', 'embassy', 'event', 'other'];
+const siteTypes = ['individual', 'villa', 'institution', 'bank', 'agency', 'hospital', 'clinic', 'shop', 'embassy', 'event', 'other'];
 
 const siteTypesFr = {
   'individual': 'Particulier',
@@ -76,6 +79,8 @@ const siteTypesFr = {
   'institution': 'Institution / entreprise',
   'bank': 'Banque',
   'agency': 'Agence financière / paiement mobile',
+  'hospital': 'Hôpital',
+  'clinic': 'Clinique / cabinet médical',
   'shop': 'Boutique / commerce',
   'embassy': 'Ambassade',
   'event': 'Événement',
@@ -88,6 +93,8 @@ IconData siteTypeIcon(String s) => switch (s) {
       'institution' => Icons.apartment,
       'bank' => Icons.account_balance,
       'agency' => Icons.currency_exchange,
+      'hospital' => Icons.local_hospital,
+      'clinic' => Icons.medical_services,
       'shop' => Icons.storefront,
       'embassy' => Icons.flag,
       'event' => Icons.event,
