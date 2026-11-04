@@ -51,14 +51,37 @@ String loginEmail(String input) {
 DateTime? _date(dynamic v) => v is Timestamp ? v.toDate() : null;
 String _str(dynamic v) => v is String ? v : '';
 
+/// Postes dans la société (indépendants des droits dans l'appli).
+const jobs = ['guard', 'bodyguard', 'driver', 'supervisor', 'accountant', 'admin_staff', 'manager', 'dg', 'other'];
+
+const jobsFr = {
+  'guard': 'Agent de sécurité',
+  'bodyguard': 'Garde du corps (protection rapprochée)',
+  'driver': 'Chauffeur',
+  'supervisor': 'Chef d\'équipe / superviseur',
+  'accountant': 'Comptable',
+  'admin_staff': 'Employé administratif',
+  'manager': 'Directeur / responsable',
+  'dg': 'Directeur Général',
+  'other': 'Autre',
+};
+
 class UserDoc {
   UserDoc(this.id, Map<String, dynamic> m)
       : name = _str(m['name']),
         phone = _str(m['phone']),
         role = _str(m['role']).isEmpty ? 'pending' : _str(m['role']),
         siteName = _str(m['siteName']),
+        mission = _str(m['mission']),
+        job = _str(m['job']).isNotEmpty
+            ? _str(m['job'])
+            : (_str(m['role']) == 'admin' ? 'manager' : 'guard'),
         siteId = m['siteId'] is String ? m['siteId'] as String : null;
   final String id, name, phone, role, siteName;
+  /// Poste (guard, bodyguard, driver, accountant, manager, dg…).
+  final String job;
+  /// Mission en cours (ex. : protection de l'ambassadeur X, chauffeur de la DG).
+  final String mission;
   final String? siteId;
 }
 

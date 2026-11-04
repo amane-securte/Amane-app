@@ -98,6 +98,9 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
   final pass = TextEditingController(
       text: '${100000 + math.Random.secure().nextInt(900000)}');
   var role = 'guard';
+  var job = 'guard';
+  final mission = TextEditingController();
+  final monthly = TextEditingController();
   String? siteId;
   final siteName = TextEditingController();
   // Nouveau site : position prise ici (« here ») ou plus tard (« later » ;
@@ -166,9 +169,15 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
             }
             await db.collection('users').doc(uid).update({
               'role': role,
+              if (role != 'client') 'job': job,
+              if (role != 'client' && mission.text.trim().isNotEmpty) 'mission': mission.text.trim(),
               if (sid != null) 'siteId': sid,
               if (sid != null) 'siteName': sName,
             });
+            final m = double.tryParse(monthly.text.replaceAll(RegExp(r'[^0-9.]'), ''));
+            if (role != 'client' && m != null && m > 0) {
+              await db.collection('rates').doc('m_$uid').set({'rate': m});
+            }
             if (ctx.mounted) Navigator.pop(ctx, (p, pw));
           } on FirebaseAuthException catch (e) {
             setS(() {
@@ -208,6 +217,37 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
                     if (role == 'client' && siteId == null) siteId = _newSite;
                   }),
                 ),
+                if (role != 'client') ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: job,
+                    isExpanded: true,
+                    decoration: InputDecoration(labelText: t('job')),
+                    items: [
+                      for (final j in jobs)
+                        DropdownMenuItem(
+                            value: j,
+                            child: Row(children: [
+                              Icon(jobIcon(j), size: 18, color: navy),
+                              const SizedBox(width: 8),
+                              Text(t('job_$j')),
+                            ])),
+                    ],
+                    onChanged: (v) => setS(() => job = v ?? 'guard'),
+                  ),
+                  TextField(
+                    controller: mission,
+                    decoration: InputDecoration(
+                        labelText: t('mission'), hintText: t('mission_hint_$job')),
+                  ),
+                  if (job != 'guard' && job != 'bodyguard')
+                    TextField(
+                      controller: monthly,
+                      keyboardType: TextInputType.number,
+                      textDirection: TextDirection.ltr,
+                      decoration: InputDecoration(labelText: t('monthly_salary'), suffixText: 'MRU'),
+                    ),
+                ],
                 const SizedBox(height: 12),
                 TextField(
                   controller: name,
@@ -317,4 +357,97 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
   if (done == null || !context.mounted) return;
   snack(context, t('add_ok'), color: okGreen);
   await shareInvite(context, t, phone: done.$1, pass: done.$2);
+}
+
+
+IconData jobIcon(String j) => switch (j) {
+      'guard' => Icons.badge,
+      'bodyguard' => Icons.shield_moon,
+      'driver' => Icons.directions_car,
+      'supervisor' => Icons.supervisor_account,
+      'accountant' => Icons.calculate,
+      'admin_staff' => Icons.business_center,
+      'manager' => Icons.manage_accounts,
+      'dg' => Icons.workspace_premium,
+      _ => Icons.person,
+    };
+
+/// Poste, mission et salaire d'un employé (administration).
+Future<void> editStaff(BuildContext context, T t, UserDoc u) async {
+  double rate(DocumentSnapshot<Map<String, dynamic>> d) =>
+      (d.data()?['rate'] is num) ? (d.data()!['rate'] as num).toDouble() : 0;
+  var job = u.job;
+  final mission = TextEditingController(text: u.mission);
+  final monthly = TextEditingController();
+  final hourly = TextEditingController();
+  try {
+    final m = await db.collection('rates').doc('m_${u.id}').get();
+    final h = await db.collection('rates').doc('g_${u.id}').get();
+    if (rate(m) > 0) monthly.text = rate(m).toStringAsFixed(0);
+    if (rate(h) > 0) hourly.text = rate(h).toStringAsFixed(0);
+  } catch (_) {}
+  if (!context.mounted) return;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setS) => AlertDialog(
+        title: Text(u.name),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: jobs.contains(job) ? job : 'other',
+                isExpanded: true,
+                decoration: InputDecoration(labelText: t('job')),
+                items: [
+                  for (final j in jobs)
+                    DropdownMenuItem(
+                        value: j,
+                        child: Row(children: [
+                          Icon(jobIcon(j), size: 18, color: navy),
+                          const SizedBox(width: 8),
+                          Text(t('job_$j')),
+                        ])),
+                ],
+                onChanged: (v) => setS(() => job = v ?? job),
+              ),
+              TextField(
+                controller: mission,
+                minLines: 1,
+                maxLines: 3,
+                decoration: InputDecoration(labelText: t('mission'), hintText: t('mission_hint_$job')),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: monthly,
+                keyboardType: TextInputType.number,
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(labelText: t('monthly_salary'), suffixText: 'MRU'),
+              ),
+              TextField(
+                controller: hourly,
+                keyboardType: TextInputType.number,
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(labelText: t('hourly_pay'), suffixText: 'MRU/h'),
+              ),
+              const SizedBox(height: 6),
+              Text(t('salary_hint'), style: const TextStyle(color: muted, fontSize: 12)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t('save'))),
+        ],
+      ),
+    ),
+  );
+  if (ok != true) return;
+  double? num_(TextEditingController c) =>
+      double.tryParse(c.text.replaceAll(RegExp(r'[^0-9.]'), ''));
+  await db.collection('users').doc(u.id).update({'job': job, 'mission': mission.text.trim()});
+  await db.collection('rates').doc('m_${u.id}').set({'rate': num_(monthly) ?? 0});
+  await db.collection('rates').doc('g_${u.id}').set({'rate': num_(hourly) ?? 0});
+  if (context.mounted) snack(context, t('saved'), color: okGreen);
 }

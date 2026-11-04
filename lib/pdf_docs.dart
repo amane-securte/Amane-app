@@ -289,23 +289,27 @@ Future<void> printPayslip({
   required double hours,
   required int shifts,
   required double rate,
+  double monthly = 0,
+  String job = '',
   List<(String, double)> lines = const [],
 }) async {
   final doc = pw.Document(theme: await _theme());
   final lh = await _Letterhead.load();
-  final amount = hours * rate;
+  final amount = hours * rate + monthly;
   final net = amount + lines.fold<double>(0, (s, l) => s + l.$2);
   String signed(double v) => v < 0 ? '- ${_money(-v)}' : '+ ${_money(v)}';
   doc.addPage(lh.page([
     _refLine('FICHE DE PAIE', month),
-    pw.Text('Agent', style: const pw.TextStyle(color: _grey)),
+    pw.Text(job.isEmpty ? 'Agent' : job, style: const pw.TextStyle(color: _grey)),
     pw.Text(name, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
     if (phone.isNotEmpty) pw.Text('Tél. $phone'),
     pw.SizedBox(height: 20),
     _table(
       ['Élément', 'Heures', 'Taux horaire', 'Montant'],
       [
-        ['Heures de service ($shifts missions)', _h(hours), _money(rate), _money(amount)],
+        if (monthly > 0) ['Salaire mensuel', '', '', _money(monthly)],
+        if (hours > 0 || monthly == 0)
+          ['Heures de service ($shifts missions)', _h(hours), _money(rate), _money(hours * rate)],
         for (final l in lines) [l.$1, '', '', signed(l.$2)],
       ],
       lines.isEmpty ? _money(amount) : 'Net : ${_money(net)}',
@@ -314,7 +318,7 @@ Future<void> printPayslip({
     pw.Text(
         lines.isEmpty
             ? 'Salaire brut calculé sur les heures pointées, avant cotisations et retenues.'
-            : 'Net à payer = salaire des heures pointées + primes - avances - retenues - absences.',
+            : 'Net à payer = salaire + primes - avances - retenues - absences.',
         style: const pw.TextStyle(color: _grey, fontSize: 10)),
     pw.SizedBox(height: 40),
     pw.Row(

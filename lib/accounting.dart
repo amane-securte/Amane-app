@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'data.dart';
 import 'expenses.dart';
+import 'people.dart';
 import 'i18n.dart';
 import 'pdf_docs.dart';
 import 'report.dart';
@@ -92,6 +93,8 @@ class _AccountingTabState extends State<AccountingTab> {
     );
   }
 
+  String? _job(String uid) => widget.users.where((u) => u.id == uid).firstOrNull?.job;
+
   String get _monthKey => '${_month.year}-${two(_month.month)}';
 
   Widget _body(List<PunchDoc> ps, Map<String, double> rates,
@@ -121,12 +124,22 @@ class _AccountingTabState extends State<AccountingTab> {
     for (final a in adjs) {
       (adjByGuard[a.uid] ??= []).add(a);
     }
-    final payUids = {...byGuard.keys, ...adjByGuard.keys};
+    // Salariés au mois (direction, comptables, chauffeurs…).
+    final monthlyUids = {
+      for (final u in widget.users)
+        if ((rates['m_${u.id}'] ?? 0) > 0 && u.role != 'client' && u.role != 'disabled') u.id,
+    };
+    // Le compte du DG lui-même n'est pas dans widget.users : on l'ajoute s'il a un salaire.
+    for (final k in rates.keys) {
+      if (k.startsWith('m_') && (rates[k] ?? 0) > 0) monthlyUids.add(k.substring(2));
+    }
+    final payUids = {...byGuard.keys, ...adjByGuard.keys, ...monthlyUids};
     var payTotal = 0.0, hTotal = 0.0, netTotal = 0.0;
     final payRows = payUids.map((uid) {
       final h = byGuard[uid] ?? 0;
       final rate = rates['g_$uid'] ?? 0;
-      final gross = h * rate;
+      final monthly = rates['m_$uid'] ?? 0;
+      final gross = h * rate + monthly;
       final list = adjByGuard[uid] ?? const <Adj>[];
       final net = gross + list.fold<double>(0, (s, a) => s + a.signed);
       // Coût pour la société : l'avance n'est qu'un paiement anticipé.
@@ -138,7 +151,7 @@ class _AccountingTabState extends State<AccountingTab> {
       final name = userName[uid] ??
           nameFromPunch[uid] ??
           (list.isNotEmpty ? list.first.name : '—');
-      return (uid, name, h, byGuardCount[uid] ?? 0, rate, gross, list, net);
+      return (uid, name, h, byGuardCount[uid] ?? 0, rate, gross, list, net, monthly);
     }).toList()
       ..sort((a, b) => b.$8.compareTo(a.$8));
 
@@ -213,11 +226,13 @@ class _AccountingTabState extends State<AccountingTab> {
               margin: const EdgeInsets.only(bottom: 6),
               child: ListTile(
                 title: Text(r.$2),
-                subtitle: Text(t('pay_line', {
-                      'h': hours(r.$3),
-                      'n': '${r.$4}',
-                      'r': money(r.$5),
-                    }) +
+                subtitle: Text(
+                    [
+                      if (_job(r.$1) != null) t('job_${_job(r.$1)}'),
+                      if (r.$9 > 0) t('monthly_line', {'m': money(r.$9)}),
+                      if (r.$3 > 0 || r.$9 == 0)
+                        t('pay_line', {'h': hours(r.$3), 'n': '${r.$4}', 'r': money(r.$5)}),
+                    ].join(' · ') +
                     (r.$7.isEmpty
                         ? ''
                         : '\n${t('gross')} ${money(r.$6)} · ${t('adj_count', {'n': '${r.$7.length}'})}')),
@@ -240,7 +255,8 @@ class _AccountingTabState extends State<AccountingTab> {
                     shifts: r.$4,
                     rate: r.$5,
                     gross: r.$6,
-                    adjs: r.$7),
+                    adjs: r.$7,
+                    monthly: r.$9),
               ),
             )),
         const SizedBox(height: 18),
@@ -288,7 +304,7 @@ class _AccountingTabState extends State<AccountingTab> {
           );
         }),
         const SizedBox(height: 18),
-        ExpensesSection(t: t, month: _month, items: exps, sites: widget.sites),
+        ExpensesSection(t: t, month: _month, items: exps, sites: widget.sites, users: widget.users),
         const SizedBox(height: 12),
         Text(t('acc_note'), style: const TextStyle(color: muted, fontSize: 12)),
         const SizedBox(height: 12),
@@ -297,13 +313,16 @@ class _AccountingTabState extends State<AccountingTab> {
           tilePadding: EdgeInsets.zero,
           title: Text(t('all_rates')),
           children: [
-            for (final u in widget.users.where((u) => u.role == 'guard'))
+            for (final u in widget.users.where((u) => u.role == 'guard' || u.role == 'admin'))
               ListTile(
                 dense: true,
-                leading: const Icon(Icons.badge, size: 18),
+                leading: Icon(jobIcon(u.job), size: 18),
                 title: Text(u.name),
-                trailing: Text('${money(rates['g_${u.id}'] ?? 0)} MRU/h'),
-                onTap: () => _editRate('g_${u.id}', u.name, rates['g_${u.id}'] ?? 0, t('hourly_pay')),
+                subtitle: Text(t('job_${u.job}')),
+                trailing: Text((rates['m_${u.id}'] ?? 0) > 0
+                    ? '${money(rates['m_${u.id}']!)} MRU/${t('per_month')}'
+                    : '${money(rates['g_${u.id}'] ?? 0)} MRU/h'),
+                onTap: () => editStaff(context, t, u),
               ),
             for (final s in widget.sites)
               ListTile(
@@ -342,8 +361,10 @@ class _AccountingTabState extends State<AccountingTab> {
     required double rate,
     required double gross,
     required List<Adj> adjs,
+    double monthly = 0,
   }) async {
     final phone = widget.users.where((u) => u.id == uid).firstOrNull?.phone ?? '';
+    final job = _job(uid);
     final net = gross + adjs.fold<double>(0, (s, a) => s + a.signed);
     final v = await showModalBottomSheet<String>(
       context: context,
@@ -359,9 +380,15 @@ class _AccountingTabState extends State<AccountingTab> {
               Text(name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
               Text('${two(_month.month)}/${_month.year}', style: const TextStyle(color: muted)),
               const SizedBox(height: 10),
+              if (job != null)
+                Text(t('job_$job'), style: const TextStyle(color: navy, fontWeight: FontWeight.w600)),
               _kv(t('gross'), '${money(gross)} MRU'),
-              Text(t('pay_line', {'h': hours.toStringAsFixed(1), 'n': '$shifts', 'r': money(rate)}),
-                  style: const TextStyle(color: muted, fontSize: 12)),
+              if (monthly > 0)
+                Text(t('monthly_line', {'m': money(monthly)}),
+                    style: const TextStyle(color: muted, fontSize: 12)),
+              if (hours > 0 || monthly == 0)
+                Text(t('pay_line', {'h': hours.toStringAsFixed(1), 'n': '$shifts', 'r': money(rate)}),
+                    style: const TextStyle(color: muted, fontSize: 12)),
               const Divider(),
               if (adjs.isEmpty)
                 Padding(
@@ -412,7 +439,7 @@ class _AccountingTabState extends State<AccountingTab> {
               TextButton.icon(
                 onPressed: () => Navigator.pop(ctx, 'rate'),
                 icon: const Icon(Icons.edit),
-                label: Text(t('edit_rate')),
+                label: Text(t('edit_staff')),
               ),
             ],
           ),
@@ -429,23 +456,33 @@ class _AccountingTabState extends State<AccountingTab> {
           hours: hours,
           shifts: shifts,
           rate: rate,
+          monthly: monthly,
+          job: jobsFr[job ?? 'guard'] ?? '',
           lines: [for (final a in adjs) (pdfAdjLabel(a), a.signed)],
         );
       } catch (e) {
         if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
       }
     } else if (v == 'rate') {
-      await _editRate('g_$uid', name, rate, t('hourly_pay'));
+      final u = widget.users.where((u) => u.id == uid).firstOrNull;
+      if (u != null) {
+        await editStaff(context, t, u);
+      } else {
+        await _editRate('g_$uid', name, rate, t('hourly_pay'));
+      }
     } else if (v.startsWith('del:')) {
       await db.collection('rates').doc(v.substring(4)).delete();
       if (mounted) snack(context, t('saved'), color: okGreen);
     } else if (v.startsWith('add:')) {
-      await _addAdj(v.substring(4), uid, name, rate);
+      await _addAdj(v.substring(4), uid, name, rate, monthly: monthly);
     }
   }
 
   /// Ajoute une avance, une retenue, une absence ou une prime pour le mois affiché.
-  Future<void> _addAdj(String kind, String uid, String name, double rate) async {
+  Future<void> _addAdj(String kind, String uid, String name, double rate,
+      {double monthly = 0}) async {
+    // Valeur d'une journée : 1/30 du salaire mensuel + 12 h au taux horaire.
+    final dayValue = monthly / 30 + 12 * rate;
     final amount = TextEditingController();
     final days = TextEditingController(text: '1');
     final note = TextEditingController();
@@ -464,7 +501,7 @@ class _AccountingTabState extends State<AccountingTab> {
                 decoration: InputDecoration(labelText: t('absence_days')),
               ),
               const SizedBox(height: 6),
-              Text(t('absence_hint', {'r': money(rate)}),
+              Text(t('absence_hint2', {'d': money(dayValue)}),
                   style: const TextStyle(color: muted, fontSize: 12)),
             ] else
               TextField(
@@ -492,7 +529,7 @@ class _AccountingTabState extends State<AccountingTab> {
     if (absence) {
       final d = double.tryParse(days.text.replaceAll(',', '.').trim()) ?? 0;
       if (d <= 0) return;
-      value = d * 12 * rate; // une journée de garde = 12 h
+      value = d * dayValue;
       n = '${d % 1 == 0 ? d.toInt() : d} ${t('days')}${n.isEmpty ? '' : ' · $n'}';
     } else {
       value = double.tryParse(amount.text.replaceAll(',', '.').replaceAll(' ', '').trim()) ?? 0;

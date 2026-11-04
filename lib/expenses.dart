@@ -20,6 +20,8 @@ const expenseCats = [
   'phone', // téléphone et internet
   'equipment', // uniformes et équipements
   'rent', // loyer
+  'dg', // frais du Directeur Général
+  'mission', // frais de mission (protection rapprochée, déplacements)
   'other', // autres dépenses
 ];
 
@@ -35,6 +37,8 @@ const expenseCatsFr = {
   'phone': 'Téléphone / Internet',
   'equipment': 'Uniformes / équipements',
   'rent': 'Loyer',
+  'dg': 'Frais du Directeur Général',
+  'mission': 'Frais de mission',
   'other': 'Autres dépenses',
 };
 
@@ -50,6 +54,8 @@ IconData expenseIcon(String c) => switch (c) {
       'phone' => Icons.phone_android,
       'equipment' => Icons.checkroom,
       'rent' => Icons.home_work,
+      'dg' => Icons.workspace_premium,
+      'mission' => Icons.flight_takeoff,
       _ => Icons.receipt,
     };
 
@@ -61,9 +67,10 @@ class Expense {
         label = m['label'] is String ? m['label'] as String : '',
         month = m['month'] is String ? m['month'] as String : '',
         siteName = m['siteName'] is String ? m['siteName'] as String : '',
+        person = m['person'] is String ? m['person'] as String : '',
         amount = m['amount'] is num ? (m['amount'] as num).toDouble() : 0,
         date = m['date'] is Timestamp ? (m['date'] as Timestamp).toDate() : DateTime.now();
-  final String id, cat, label, month, siteName;
+  final String id, cat, label, month, siteName, person;
   final double amount;
   final DateTime date;
 }
@@ -86,11 +93,13 @@ class ExpensesSection extends StatelessWidget {
     required this.month,
     required this.items,
     required this.sites,
+    this.users = const [],
   });
   final T t;
   final DateTime month;
   final List<Expense> items;
   final List<Site> sites;
+  final List<UserDoc> users;
 
   String get _monthKey => '${month.year}-${two(month.month)}';
 
@@ -127,7 +136,7 @@ class ExpensesSection extends StatelessWidget {
                           (
                             '${two(e.date.day)}/${two(e.date.month)}',
                             expenseCatsFr[e.cat] ?? e.cat,
-                            [e.label, if (e.siteName.isNotEmpty) e.siteName].join(' · '),
+                            [e.label, if (e.person.isNotEmpty) e.person, if (e.siteName.isNotEmpty) e.siteName].join(' · '),
                             e.amount,
                           ),
                       ],
@@ -143,7 +152,7 @@ class ExpensesSection extends StatelessWidget {
             FilledButton.icon(
               icon: const Icon(Icons.add),
               label: Text(t('exp_add')),
-              onPressed: () => addExpense(context, t, month, sites),
+              onPressed: () => addExpense(context, t, month, sites, users),
             ),
           ],
         ),
@@ -192,6 +201,7 @@ class ExpensesSection extends StatelessWidget {
                 subtitle: Text([
                   '${two(e.date.day)}/${two(e.date.month)}',
                   t('ec_${e.cat}'),
+                  if (e.person.isNotEmpty) e.person,
                   if (e.siteName.isNotEmpty) e.siteName,
                 ].join(' · ')),
                 trailing: ltrText('${_money(e.amount)} MRU',
@@ -226,9 +236,12 @@ class ExpensesSection extends StatelessWidget {
 }
 
 /// Saisie d'une dépense.
-Future<void> addExpense(BuildContext context, T t, DateTime month, List<Site> sites) async {
+Future<void> addExpense(BuildContext context, T t, DateTime month, List<Site> sites,
+    [List<UserDoc> users = const []]) async {
   var cat = 'fuel';
   String? siteId;
+  String? personId;
+  final staff = users.where((u) => u.role == 'guard' || u.role == 'admin').toList();
   final amount = TextEditingController();
   final label = TextEditingController();
   final now = DateTime.now();
@@ -283,6 +296,22 @@ Future<void> addExpense(BuildContext context, T t, DateTime month, List<Site> si
                 ],
                 onChanged: (v) => setS(() => siteId = v),
               ),
+              if (staff.isNotEmpty)
+                DropdownButtonFormField<String?>(
+                  initialValue: personId,
+                  isExpanded: true,
+                  decoration: InputDecoration(labelText: t('exp_person')),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('—')),
+                    for (final u in staff)
+                      DropdownMenuItem(value: u.id, child: Text('${u.name} · ${t('job_${u.job}')}')),
+                  ],
+                  onChanged: (v) => setS(() {
+                    personId = v;
+                    final u = staff.where((u) => u.id == v).firstOrNull;
+                    if (u?.job == 'dg') cat = 'dg';
+                  }),
+                ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 icon: const Icon(Icons.event),
@@ -321,6 +350,8 @@ Future<void> addExpense(BuildContext context, T t, DateTime month, List<Site> si
                 'label': label.text.trim(),
                 'siteId': siteId,
                 'siteName': s?.name ?? '',
+                'personId': personId,
+                'person': staff.where((u) => u.id == personId).firstOrNull?.name ?? '',
                 'date': Timestamp.fromDate(date),
                 'month': '${date.year}-${two(date.month)}',
                 'createdAt': Timestamp.now(),

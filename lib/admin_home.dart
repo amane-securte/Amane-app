@@ -129,11 +129,12 @@ class _AdminHomeState extends State<AdminHome> {
             return StreamBuilder<QueryMap>(
               stream: _users,
               builder: (context, uSnap) {
-                final users = (uSnap.data?.docs ?? const [])
+                final everyone = (uSnap.data?.docs ?? const [])
                     .map((d) => UserDoc(d.id, d.data()))
-                    .where((u) => u.id != widget.me.id)
                     .toList()
                   ..sort((a, b) => a.name.compareTo(b.name));
+                final users = everyone.where((u) => u.id != widget.me.id).toList();
+                final me = everyone.where((u) => u.id == widget.me.id).firstOrNull ?? widget.me;
                 return TabBarView(
                   // Pas de glissement entre onglets : la carte en a besoin.
                   physics: const NeverScrollableScrollPhysics(),
@@ -142,9 +143,9 @@ class _AdminHomeState extends State<AdminHome> {
                     GuardHome(prefs: widget.prefs, me: widget.me, embedded: true),
                     MapTab(t: t, sites: sites),
                     PlanningTab(t: t, guards: users, sites: sites),
-                    _guardsTab(sites, users),
+                    _guardsTab(sites, users, me),
                     _sitesTab(sites),
-                    AccountingTab(t: t, users: users, sites: sites),
+                    AccountingTab(t: t, users: everyone, sites: sites),
                     AdminMessagesTab(t: t),
                   ],
                 );
@@ -442,11 +443,15 @@ class _AdminHomeState extends State<AdminHome> {
 
   // ---------------------------------------------------------------- Agents
 
-  Widget _guardsTab(List<Site> sites, List<UserDoc> users) {
+  Widget _guardsTab(List<Site> sites, List<UserDoc> users, UserDoc me) {
     return Builder(
       builder: (context) {
         final pending = users.where((u) => u.role == 'pending').toList();
-        final staff = users.where((u) => u.role == 'guard' || u.role == 'admin').toList();
+        final staff = users.where((u) => u.role == 'guard' || u.role == 'admin').toList()
+          ..sort((a, b) {
+            final c = jobs.indexOf(b.job).compareTo(jobs.indexOf(a.job));
+            return c != 0 ? c : a.name.compareTo(b.name);
+          });
         final clients = users.where((u) => u.role == 'client').toList();
         final off = users.where((u) => u.role == 'disabled').toList();
         final siteName = {for (final s in sites) s.id: s.name};
@@ -455,13 +460,16 @@ class _AdminHomeState extends State<AdminHome> {
               child: ListTile(
                 title: Text(u.name),
                 subtitle: Text(
-                    [
-                      if (u.phone.isNotEmpty) u.phone,
-                      siteName[u.siteId] ?? '—',
-                    ].join(' · '),
-                    textDirection: TextDirection.ltr,
-                    textAlign: TextAlign.start),
-                leading: _roleIcon(u.role),
+                  [
+                    if (u.role != 'client') t('job_${u.job}'),
+                    if (u.mission.isNotEmpty) u.mission,
+                    if (u.phone.isNotEmpty) u.phone,
+                    if (u.siteId != null) siteName[u.siteId] ?? '—',
+                  ].join(' · '),
+                ),
+                leading: u.role == 'guard' || u.role == 'admin'
+                    ? Icon(jobIcon(u.job), color: u.role == 'admin' ? gold : navy)
+                    : _roleIcon(u.role),
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) => _userAction(u, v, sites),
                   itemBuilder: (_) => [
@@ -469,6 +477,8 @@ class _AdminHomeState extends State<AdminHome> {
                       PopupMenuItem(value: 'call', child: Text(t('call'))),
                     if (u.phone.isNotEmpty)
                       PopupMenuItem(value: 'invite', child: Text(t('invite_again'))),
+                    if (u.role != 'client')
+                      PopupMenuItem(value: 'job', child: Text(t('edit_staff'))),
                     PopupMenuItem(value: 'site', child: Text(t('set_site'))),
                     if (u.role == 'guard')
                       PopupMenuItem(value: 'admin', child: Text(t('make_admin'))),
@@ -510,6 +520,19 @@ class _AdminHomeState extends State<AdminHome> {
                       )),
                   const SizedBox(height: 16),
                 ],
+                Card(
+                  color: const Color(0xFFFFF8E1),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: Icon(jobIcon(me.job), color: gold),
+                    title: Text('${me.name} · ${t('me_label')}'),
+                    subtitle: Text([t('job_${me.job}'), if (me.mission.isNotEmpty) me.mission].join(' · ')),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => editStaff(context, t, me),
+                    ),
+                  ),
+                ),
                 _h(t('sec_guards', {'n': '${staff.length}'})),
                 if (staff.isEmpty) _empty(t('no_guards')),
                 ...staff.map(tile),
@@ -562,6 +585,8 @@ class _AdminHomeState extends State<AdminHome> {
     switch (v) {
       case 'call':
         await openUrl('tel:${u.phone}');
+      case 'job':
+        if (mounted) await editStaff(context, t, u);
       case 'site':
         await _assign(u, sites);
       case 'admin':
