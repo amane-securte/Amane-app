@@ -94,12 +94,15 @@ class ExpensesSection extends StatelessWidget {
     required this.items,
     required this.sites,
     this.users = const [],
+    this.salaries = 0,
   });
   final T t;
   final DateTime month;
   final List<Expense> items;
   final List<Site> sites;
   final List<UserDoc> users;
+  /// Masse salariale du mois (coût pour la société), comptée dans les dépenses.
+  final double salaries;
 
   String get _monthKey => '${month.year}-${two(month.month)}';
 
@@ -109,7 +112,8 @@ class ExpensesSection extends StatelessWidget {
     for (final e in items) {
       byCat[e.cat] = (byCat[e.cat] ?? 0) + e.amount;
     }
-    final total = items.fold<double>(0, (s, e) => s + e.amount);
+    final other = items.fold<double>(0, (s, e) => s + e.amount);
+    final total = other + salaries;
     final sorted = [...items]..sort((a, b) => b.date.compareTo(a.date));
     final cats = byCat.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
@@ -122,7 +126,7 @@ class ExpensesSection extends StatelessWidget {
               child: Text(t('expenses'),
                   style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
             ),
-            if (items.isNotEmpty)
+            if (items.isNotEmpty || salaries > 0)
               IconButton(
                 tooltip: t('exp_pdf'),
                 icon: const Icon(Icons.picture_as_pdf, color: danger),
@@ -130,7 +134,10 @@ class ExpensesSection extends StatelessWidget {
                   try {
                     await printExpenses(
                       month: '${two(month.month)}/${month.year}',
-                      byCat: [for (final c in cats) (expenseCatsFr[c.key] ?? c.key, c.value)],
+                      byCat: [
+                        if (salaries > 0) ('Salaires et rémunérations', salaries),
+                        for (final c in cats) (expenseCatsFr[c.key] ?? c.key, c.value),
+                      ],
                       lines: [
                         for (final e in sorted.reversed)
                           (
@@ -157,7 +164,7 @@ class ExpensesSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        if (items.isEmpty)
+        if (items.isEmpty && salaries == 0)
           Text(t('exp_none'), style: const TextStyle(color: muted))
         else ...[
           Card(
@@ -165,6 +172,17 @@ class ExpensesSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               child: Column(
                 children: [
+                  if (salaries > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(children: [
+                        const Icon(Icons.groups, size: 18, color: navy),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(t('ec_salaries'))),
+                        ltrText('${_money(salaries)} MRU',
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
                   for (final c in cats)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 3),

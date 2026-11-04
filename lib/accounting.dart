@@ -208,8 +208,9 @@ class _AccountingTabState extends State<AccountingTab> {
               children: [
                 _kv(t('total_invoiced'), '${money(invTotal)} MRU'),
                 _kv(t('total_salaries'), '${money(payTotal)} MRU'),
+                _kv(t('other_expenses'), '${money(expTotal)} MRU'),
+                _kv(t('total_expenses'), '${money(payTotal + expTotal)} MRU', bold: true),
                 _kv(t('net_to_pay'), '${money(netTotal)} MRU'),
-                _kv(t('total_expenses'), '${money(expTotal)} MRU'),
                 const Divider(),
                 _kv(t('margin'), '${money(margin)} MRU',
                     color: margin < 0 ? danger : okGreen, bold: true),
@@ -309,7 +310,8 @@ class _AccountingTabState extends State<AccountingTab> {
           );
         }),
         const SizedBox(height: 18),
-        ExpensesSection(t: t, month: _month, items: exps, sites: widget.sites, users: widget.users),
+        ExpensesSection(
+            t: t, month: _month, items: exps, sites: widget.sites, users: widget.users, salaries: payTotal),
         const SizedBox(height: 12),
         Text(t('acc_note'), style: const TextStyle(color: muted, fontSize: 12)),
         const SizedBox(height: 12),
