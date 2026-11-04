@@ -90,11 +90,11 @@ class RoleGate extends StatelessWidget {
         if (doc.exists && me.role != 'pending' && me.role != 'disabled') {
           Push.register(user.uid);
         }
+        if (doc.exists && needsConsent(doc.data() ?? const {}, owner: isOwner)) {
+          return ConsentScreen(prefs: prefs, me: me);
+        }
         if (isOwner || me.role == 'admin') {
           return AdminHome(prefs: prefs, me: me);
-        }
-        if ((me.role == 'guard' || me.role == 'client') && needsConsent(doc.data() ?? const {})) {
-          return ConsentScreen(prefs: prefs, me: me);
         }
         if (me.role == 'guard') return GuardHome(prefs: prefs, me: me);
         if (me.role == 'client') return ClientHome(prefs: prefs, me: me);

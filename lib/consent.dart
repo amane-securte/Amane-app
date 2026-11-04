@@ -103,9 +103,12 @@ List<ConsentPart> consentText({required bool client, required String lang}) => c
 List<ConsentPart> consentTextAr(bool client) => client ? _clientAr : _staffAr;
 List<ConsentPart> consentTextFr(bool client) => client ? _clientFr : _staffFr;
 
-bool needsConsent(Map<String, dynamic> m) {
+/// Tous les employés (agents, chauffeurs, comptables, directeurs…) et tous
+/// les clients acceptent ; seul le compte du gérant en est dispensé.
+bool needsConsent(Map<String, dynamic> m, {bool owner = false}) {
+  if (owner) return false;
   final role = m['role'];
-  if (role != 'guard' && role != 'client') return false;
+  if (role != 'guard' && role != 'client' && role != 'admin') return false;
   final v = m['consentVer'];
   return v is! num || v < consentVersion;
 }

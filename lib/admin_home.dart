@@ -462,7 +462,7 @@ class _AdminHomeState extends State<AdminHome> {
               child: ListTile(
                 title: Row(children: [
                   Flexible(child: Text(u.name, overflow: TextOverflow.ellipsis)),
-                  if (u.role == 'guard' || u.role == 'client') ...[
+                  if (u.role == 'guard' || u.role == 'client' || u.role == 'admin') ...[
                     const SizedBox(width: 4),
                     Tooltip(
                       message: t(u.consentAt == null ? 'consent_none' : 'consent_ok'),
