@@ -65,9 +65,20 @@ jobs:
             --title "Amane – نسخة تجريبية / version de test" \
             --notes "Build ${{ github.run_number }} – ${GITHUB_SHA::7}"
 
+      - name: Keep APKs for the website
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: |
+            Amane.apk
+            Amane-telephone.apk
+            Amane-32bit.apk
+          retention-days: 3
+
   # Version web (iPhone, ordinateur) : https://amane-securite.web.app
   web:
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - uses: actions/checkout@v4
 
@@ -86,6 +97,20 @@ jobs:
 
       - name: Build web
         run: flutter build web --release --no-tree-shake-icons
+
+      # Page de téléchargement + APK + politique de confidentialité sur le
+      # site AMANE (fonctionne même si le dépôt GitHub devient privé).
+      - uses: actions/download-artifact@v4
+        with:
+          name: apks
+          path: build/web/download
+
+      - name: Download page and privacy policy
+        run: |
+          cp docs/download/index.html build/web/download/index.html
+          mkdir -p build/web/privacy
+          cp docs/index.html build/web/privacy/index.html
+          ls -la build/web/download
 
       - uses: actions/setup-node@v4
         with:

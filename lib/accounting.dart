@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'data.dart';
 import 'expenses.dart';
+import 'export.dart';
 import 'people.dart';
 import 'services.dart';
 import 'i18n.dart';
@@ -185,19 +186,62 @@ class _AccountingTabState extends State<AccountingTab> {
             IconButton(onPressed: () => _move(1), icon: const Icon(Icons.chevron_right)),
           ],
         ),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: OutlinedButton.icon(
-            icon: const Icon(Icons.summarize, color: danger),
-            label: Text(t('monthly_report')),
-            onPressed: () async {
-              try {
-                await monthlyReport(month: _month, scope: 'AMANE Sécurité privée – tous les sites');
-              } catch (e) {
-                if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
-              }
-            },
-          ),
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.table_view, color: okGreen),
+              label: Text(t('export_xlsx')),
+              onPressed: () async {
+                try {
+                  await exportMonthXlsx(
+                    month: _month,
+                    punches: ps,
+                    pay: [
+                      for (final r in payRows)
+                        (
+                          r.$2,
+                          jobsFr[_job(r.$1) ?? ''] ?? '',
+                          r.$3,
+                          r.$4,
+                          r.$5,
+                          r.$9,
+                          r.$6,
+                          r.$7.fold<double>(0, (s, a) => s + a.signed),
+                          r.$8,
+                        ),
+                    ],
+                    expenses: exps,
+                    invoices: [
+                      for (final r in invRows)
+                        (
+                          r.$2,
+                          widget.sites.where((s) => s.id == r.$1).firstOrNull?.client ?? '',
+                          r.$3,
+                          r.$4,
+                          r.$5,
+                        ),
+                    ],
+                  );
+                } catch (e) {
+                  if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+                }
+              },
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.summarize, color: danger),
+              label: Text(t('monthly_report')),
+              onPressed: () async {
+                try {
+                  await monthlyReport(month: _month, scope: 'AMANE Sécurité privée – tous les sites');
+                } catch (e) {
+                  if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+                }
+              },
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         // Synthèse

@@ -13,8 +13,7 @@ import 'theme.dart';
 import 'widgets.dart';
 
 /// Lien de téléchargement public de l'application (APK universel).
-const appDownloadUrl =
-    'https://github.com/amane-securte/Amane-app/releases/download/test-build/Amane.apk';
+const appDownloadUrl = 'https://amane-securite.web.app/download/';
 
 String _invite(T t, {String? phone, String? pass}) => [
       t('invite_intro'),

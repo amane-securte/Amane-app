@@ -1,7 +1,7 @@
 name: amane_app
 description: "Application AMANE Sécurité privée – أمان للأمن الخصوصي"
 publish_to: 'none'
-version: 1.0.3+30
+version: 1.0.4+31
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -24,6 +24,8 @@ dependencies:
   firebase_messaging: any
   audioplayers: any
   image_picker: any
+  excel: any
+  share_plus: any
 
 dev_dependencies:
   flutter_lints: any
