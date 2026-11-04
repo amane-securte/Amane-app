@@ -362,6 +362,7 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
 
 IconData jobIcon(String j) => switch (j) {
       'guard' => Icons.badge,
+      'mobile' => Icons.directions_run,
       'bodyguard' => Icons.shield_moon,
       'driver' => Icons.directions_car,
       'supervisor' => Icons.supervisor_account,

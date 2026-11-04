@@ -97,6 +97,12 @@ class _GuardHomeState extends State<GuardHome> {
       } catch (_) {}
       if (!mounted) return;
     }
+    // Agents itinérants (mobiles, superviseurs, gardes du corps, chauffeurs) :
+    // hors d'un site AMANE, on n'enregistre pas d'anomalie « hors site ».
+    if (!auto && ok == false && mobileJobs.contains(me.job)) {
+      ok = null;
+      dist = null;
+    }
     final p = open == null ? 'in' : 'out';
     final data = <String, dynamic>{
       '${p}At': Timestamp.now(),

@@ -52,13 +52,14 @@ DateTime? _date(dynamic v) => v is Timestamp ? v.toDate() : null;
 String _str(dynamic v) => v is String ? v : '';
 
 /// Postes dans la société (indépendants des droits dans l'appli).
-const jobs = ['guard', 'bodyguard', 'driver', 'supervisor', 'accountant', 'admin_staff', 'manager', 'dg', 'other'];
+const jobs = ['guard', 'mobile', 'bodyguard', 'driver', 'supervisor', 'accountant', 'admin_staff', 'manager', 'dg', 'other'];
 
 const jobsFr = {
   'guard': 'Agent de sécurité',
+  'mobile': 'Agent mobile (renfort et appui)',
   'bodyguard': 'Garde du corps (protection rapprochée)',
   'driver': 'Chauffeur',
-  'supervisor': 'Chef d\'équipe / superviseur',
+  'supervisor': 'Superviseur',
   'accountant': 'Comptable',
   'admin_staff': 'Employé administratif',
   'manager': 'Directeur / responsable',
@@ -176,3 +177,6 @@ class Prefs extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+/// Postes itinérants : pas de site fixe, donc pas d'alerte « hors site ».
+const mobileJobs = {'mobile', 'supervisor', 'bodyguard', 'driver'};
