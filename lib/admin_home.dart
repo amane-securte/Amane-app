@@ -17,6 +17,7 @@ import 'people.dart';
 import 'planning.dart';
 import 'services.dart';
 import 'i18n.dart';
+import 'instructions.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -678,12 +679,19 @@ class _AdminHomeState extends State<AdminHome> {
                     ].join('\n')),
                     isThreeLine: s.services.isNotEmpty,
                     onTap: () => _editSite(s),
-                    trailing: s.fix == null
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.map),
-                            onPressed: () => openUrl(s.fix!.mapUrl),
-                          ),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        tooltip: t('ins_title'),
+                        icon: const Icon(Icons.assignment, color: navy),
+                        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => SiteInstructionsPage(t: t, site: s))),
+                      ),
+                      if (s.fix != null)
+                        IconButton(
+                          icon: const Icon(Icons.map),
+                          onPressed: () => openUrl(s.fix!.mapUrl),
+                        ),
+                    ]),
                   ),
                 )),
           ],

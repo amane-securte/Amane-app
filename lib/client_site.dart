@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'data.dart';
 import 'i18n.dart';
+import 'instructions.dart';
 import 'logbook.dart';
 import 'messages.dart';
 import 'pdf_docs.dart';
@@ -129,6 +130,8 @@ class _ClientSiteTabState extends State<ClientSiteTab> {
                 );
               },
             ),
+            const SizedBox(height: 14),
+            ClientInstructions(t: t, me: widget.me),
             const SizedBox(height: 14),
             _h(t('client_on_duty', {'n': '${onDuty.length}'}),
                 color: onDuty.isEmpty ? warn : okGreen),

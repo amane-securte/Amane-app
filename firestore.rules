@@ -82,6 +82,19 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Consignes de site : proposées par le client, validées par AMANE,
+    // visibles par le client du site et, une fois validées, par ses agents.
+    match /instructions/{id} {
+      allow read: if isAdmin() || mySite(resource.data)
+        || (sameSiteGuard(resource.data) && resource.data.status == 'approved');
+      allow create: if isAdmin()
+        || (isClient() && request.resource.data.siteId == profile().siteId
+            && request.resource.data.status == 'pending'
+            && request.resource.data.from == 'client'
+            && request.resource.data.by == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
     // Taux (salaires, tarifs) : réservés à l'administration.
     match /rates/{id} {
       allow read, write: if isAdmin();

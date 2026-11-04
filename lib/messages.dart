@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'data.dart';
 import 'i18n.dart';
+import 'instructions.dart';
 import 'services.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -441,6 +442,7 @@ class _AdminMessagesTabState extends State<AdminMessagesTab> {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            PendingInstructions(t: t),
             Text(t('perf_title'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             Card(

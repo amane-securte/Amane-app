@@ -5,6 +5,7 @@ import 'data.dart';
 import 'geo.dart';
 import 'emergency.dart';
 import 'i18n.dart';
+import 'instructions.dart';
 import 'logbook.dart';
 import 'planning.dart';
 import 'tracking.dart';
@@ -311,7 +312,9 @@ class _GuardHomeState extends State<GuardHome> {
         ),
         const SizedBox(height: 8),
         Center(child: emergencyButton(context, t)),
-        const SizedBox(height: 28),
+        const SizedBox(height: 20),
+        GuardInstructions(t: t, siteId: site?.id ?? me.siteId),
+        const SizedBox(height: 8),
         MyShifts(t: t, stream: _shifts),
         const SizedBox(height: 16),
         OutlinedButton.icon(
