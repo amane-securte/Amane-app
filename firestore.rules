@@ -51,9 +51,14 @@ service cloud.firestore {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
         || mySite(resource.data);
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
+      // L'agent ne peut que pointer son départ (une seule fois) et envoyer sa
+      // position pendant le service : jamais modifier l'heure d'arrivée ou le site.
       allow update: if isAdmin()
         || (isGuard() && resource.data.uid == request.auth.uid
-            && request.resource.data.uid == request.auth.uid);
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['outAt', 'outLat', 'outLng', 'outAcc', 'outDist', 'outOk',
+                           'lastLat', 'lastLng', 'lastAcc', 'lastAt'])
+            && !('outAt' in resource.data));
       allow delete: if isAdmin();
     }
 
@@ -69,7 +74,9 @@ service cloud.firestore {
     match /logs/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
         || mySite(resource.data) || sameSiteGuard(resource.data);
-      allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
+      // L'agent n'écrit que dans la main courante de son propre site.
+      allow create: if isGuard() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.get('siteId', null) == profile().get('siteId', null);
       allow update, delete: if isAdmin();
     }
 
@@ -78,6 +85,7 @@ service cloud.firestore {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
         || mySite(resource.data) || sameSiteGuard(resource.data);
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.get('siteId', null) == profile().get('siteId', null)
         && request.resource.data.data is string && request.resource.data.data.size() < 950000;
       allow update, delete: if isAdmin();
     }
@@ -112,10 +120,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Alertes SOS : tout compte connecté peut en envoyer, l'administration les traite.
+    // Alertes SOS : employés et clients actifs (pas les comptes en attente ou
+    // désactivés) ; l'administration les traite.
     match /alerts/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+      allow create: if (isGuard() || isClient()) && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == 'open';
       allow update, delete: if isAdmin();
     }
