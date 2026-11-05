@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'client_home.dart' show needIcon;
 import 'data.dart';
 import 'geo.dart';
 import 'emergency.dart';
@@ -140,7 +141,7 @@ class _GuardHomeState extends State<GuardHome> {
   }
 
   Future<void> _sos(Site? site) async {
-    const types = ['assault', 'intrusion', 'fire', 'medical', 'other'];
+    const types = ['assault', 'intrusion', 'fire', 'medical', 'accident', 'breakdown', 'other'];
     final type = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -154,8 +155,7 @@ class _GuardHomeState extends State<GuardHome> {
             const SizedBox(height: 8),
             for (final ty in types)
               ListTile(
-                leading:
-                    const Icon(Icons.warning_amber_rounded, color: danger),
+                leading: Icon(needIcon(ty), color: ty == 'breakdown' ? warn : danger),
                 title: Text(t('ty_$ty'), style: const TextStyle(fontSize: 17)),
                 onTap: () => Navigator.pop(ctx, ty),
               ),

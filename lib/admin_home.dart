@@ -444,7 +444,7 @@ class _AdminHomeState extends State<AdminHome> {
                     if (act == 'civil' || act == 'ambulance') await openUrl('tel:$fireNumber');
                   },
                   itemBuilder: (_) => [
-                    for (final act in ['patrol', 'police', 'gendarmerie', 'civil', 'ambulance'])
+                    for (final act in ['patrol', 'roadside', 'police', 'gendarmerie', 'civil', 'ambulance'])
                       PopupMenuItem(value: act, child: Text(t('act_${act}_menu'))),
                   ],
                   child: Chip(

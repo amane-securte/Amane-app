@@ -14,7 +14,7 @@ import 'theme.dart';
 import 'widgets.dart';
 
 /// Besoins qu'un client peut signaler, dans l'ordre d'affichage.
-const clientNeeds = ['patrol', 'police', 'fire', 'medical', 'request'];
+const clientNeeds = ['patrol', 'police', 'fire', 'medical', 'accident', 'breakdown', 'request'];
 
 IconData needIcon(String n) => switch (n) {
       'patrol' => Icons.local_police,
@@ -22,6 +22,10 @@ IconData needIcon(String n) => switch (n) {
       'fire' => Icons.local_fire_department,
       'medical' => Icons.medical_services,
       'request' => Icons.support_agent,
+      'accident' => Icons.car_crash,
+      'breakdown' || 'roadside' => Icons.car_repair,
+      'assault' => Icons.front_hand,
+      'intrusion' => Icons.door_front_door,
       _ => Icons.warning_amber_rounded,
     };
 
@@ -113,7 +117,7 @@ class _ClientHomeState extends State<ClientHome> {
             const SizedBox(height: 8),
             for (final n in clientNeeds)
               ListTile(
-                leading: Icon(needIcon(n), color: n == 'request' ? navy : danger),
+                leading: Icon(needIcon(n), color: n == 'request' ? navy : n == 'breakdown' ? warn : danger),
                 title: Text(t('need_$n'), style: const TextStyle(fontSize: 17)),
                 subtitle: Text(t('need_${n}_sub')),
                 onTap: () => Navigator.pop(ctx, n),

@@ -15,9 +15,11 @@ setGlobalOptions({ region: "europe-west1", maxInstances: 5 });
 const TYPES_AR = {
   assault: "اعتداء", intrusion: "اقتحام", fire: "حريق", medical: "حالة طبية", other: "أخرى",
   patrol: "طلب دورية", police: "سرقة / اعتداء", request: "طلب خدمة",
+  accident: "حادث سير", breakdown: "عطل في السيارة",
 };
 const ACTIONS_AR = {
   patrol: "دورية أمان في الطريق إليك 🚓",
+  roadside: "المساعدة في الطريق إليك 🛻",
   police: "تم إبلاغ الشرطة 👮",
   gendarmerie: "تم إبلاغ الدرك الوطني 🛡️",
   civil: "تم إبلاغ المطافئ 🚒",
