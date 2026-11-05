@@ -82,11 +82,7 @@ class SupervisorScreen extends StatelessWidget {
           ]),
           const SizedBox(height: 6),
           // Origine de l'alerte : qui, d'où, quand.
-          Text(t('sup_source', {
-            'n': a.name,
-            'w': t(a.fromClient ? 'role_client' : 'role_guard'),
-          })),
-          if (a.siteName.isNotEmpty) Text('${t('site')} : ${a.siteName}'),
+          whoWhere(a.name, a.siteName, client: a.fromClient),
           if (isInland(a.fix))
             Text(t('inland_pill', {'km': kmFromNouakchott(a.fix)!.round().toString()}),
                 style: const TextStyle(color: Color(0xFF2E5E3A))),

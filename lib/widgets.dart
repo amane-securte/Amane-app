@@ -170,3 +170,27 @@ Future<void> changePassword(BuildContext context, T t) async {
         color: danger);
   }
 }
+
+
+/// Qui et où, sans ambiguïté : icône d'agent (ou de client) devant le nom,
+/// icône de lieu devant le site. Utilisé dans la main courante, les
+/// pointages et les alertes.
+Widget whoWhere(String name, String site, {bool client = false, double size = 15}) => Wrap(
+      spacing: 10,
+      runSpacing: 2,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (name.isNotEmpty)
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(client ? Icons.person : Icons.local_police, size: size + 3, color: client ? gold : navy),
+            const SizedBox(width: 3),
+            Flexible(child: Text(name, style: TextStyle(fontWeight: FontWeight.w700, fontSize: size))),
+          ]),
+        if (site.isNotEmpty)
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.location_on, size: size + 3, color: danger),
+            const SizedBox(width: 2),
+            Flexible(child: Text(site, style: TextStyle(fontSize: size, color: const Color(0xFF3B4650)))),
+          ]),
+      ],
+    );

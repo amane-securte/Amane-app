@@ -361,7 +361,7 @@ class _AdminHomeState extends State<AdminHome> {
                   const SizedBox(width: 6),
                 ],
                 Expanded(
-                  child: Text('${t(a.fromClient ? 'need_${a.type}' : 'ty_${a.type}')} · ${a.siteName}',
+                  child: Text(t(a.fromClient ? 'need_${a.type}' : 'ty_${a.type}'),
                       style: const TextStyle(
                           fontWeight: FontWeight.w700, fontSize: 16)),
                 ),
@@ -371,7 +371,7 @@ class _AdminHomeState extends State<AdminHome> {
             const SizedBox(height: 4),
             Row(
               children: [
-                Expanded(child: Text(a.name)),
+                Expanded(child: whoWhere(a.name, a.siteName, client: a.fromClient)),
                 ltrText('${dm(a.at)} ${hm(a.at)}',
                     style: const TextStyle(color: muted)),
               ],

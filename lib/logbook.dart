@@ -56,9 +56,7 @@ class LogTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 if (showName)
                   Expanded(
-                    child: Text('${l.name} · ${l.siteName}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis),
+                    child: whoWhere(l.name, l.siteName, size: 14),
                   )
                 else
                   const Spacer(),

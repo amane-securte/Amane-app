@@ -449,8 +449,7 @@ class PunchTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (showName)
-              Text('${p.name} · ${p.siteName}',
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              whoWhere(p.name, p.siteName),
             Row(
               children: [
                 Text(dm(p.inAt),
