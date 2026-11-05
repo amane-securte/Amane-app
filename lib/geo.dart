@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 
 /// Une position GPS : latitude, longitude, précision en mètres.
@@ -64,7 +65,20 @@ Future<GeoResult> getFix({int seconds = 15}) async {
       );
       return GeoResult(Fix(pos.latitude, pos.longitude, pos.accuracy), null);
     } catch (_) {
-      final last = await Geolocator.getLastKnownPosition();
+      // GPS lent (intérieur, téléphone froid) : position réseau, plus rapide.
+      try {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        return GeoResult(Fix(pos.latitude, pos.longitude, pos.accuracy), null);
+      } catch (_) {}
+      Position? last;
+      try {
+        last = await Geolocator.getLastKnownPosition();
+      } catch (_) {}
       if (last != null) {
         return GeoResult(Fix(last.latitude, last.longitude, last.accuracy), null);
       }
@@ -95,3 +109,20 @@ const inlandKm = 35.0;
 double? kmFromNouakchott(Fix? f) => f == null ? null : distanceM(f, nouakchott) / 1000;
 
 bool isInland(Fix? f) => (kmFromNouakchott(f) ?? 0) > inlandKm;
+
+
+/// SOS parti sans position : on continue à chercher (3 essais de 30 s) et on
+/// complète l'alerte dès que le GPS répond.
+Future<void> completeAlertFix(DocumentReference<Map<String, dynamic>> ref) async {
+  for (var i = 0; i < 3; i++) {
+    final r = await getFix(seconds: 30);
+    final f = r.fix;
+    if (f != null) {
+      try {
+        await ref.update({...f.write(''), 'lateFix': true});
+      } catch (_) {}
+      return;
+    }
+    if (r.error == GeoErr.denied || r.error == GeoErr.deniedForever || r.error == GeoErr.serviceOff) return;
+  }
+}

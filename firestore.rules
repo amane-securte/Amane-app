@@ -155,7 +155,12 @@ service cloud.firestore {
       allow read: if isAdmin() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if (isGuard() || isClient()) && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == 'open';
-      allow update, delete: if isAdmin();
+      // L'auteur peut seulement ajouter sa position si le GPS a répondu en retard.
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['Lat', 'Lng', 'Acc', 'lateFix', 'gpsErr']));
+      allow delete: if isAdmin();
     }
 
     // Messagerie client ↔ AMANE : un fil par client.

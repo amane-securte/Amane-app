@@ -167,7 +167,9 @@ class _ClientHomeState extends State<ClientHome> {
       'status': 'open',
       'at': Timestamp.now(),
       if (f != null) ...f.write(''),
+      if (f == null && r.error != null) 'gpsErr': r.error!.name,
     });
+    if (f == null) write.then(completeAlertFix).ignore();
     var online = true;
     try {
       await write.timeout(const Duration(seconds: 6));

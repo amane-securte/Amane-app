@@ -440,6 +440,20 @@ class _AdminHomeState extends State<AdminHome> {
                 padding: const EdgeInsets.only(top: 4),
                 child: pill(t('act_${a.action}'), okGreen),
               ),
+            if (f == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(children: [
+                  const Icon(Icons.location_off, color: danger, size: 18),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(t('alert_no_gps_${a.gpsErr.isEmpty ? 'unknown' : a.gpsErr}'),
+                        style: const TextStyle(color: danger, fontWeight: FontWeight.w600)),
+                  ),
+                ]),
+              ),
+            if (f != null && a.lateFix)
+              Text(t('alert_late_fix'), style: const TextStyle(color: muted, fontSize: 12)),
             if (near.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(t('near_mobile'), style: const TextStyle(fontWeight: FontWeight.w600, color: navy)),
@@ -466,6 +480,14 @@ class _AdminHomeState extends State<AdminHome> {
               spacing: 6,
               runSpacing: 6,
               children: [
+                // Pas de position GPS : à défaut, l'adresse enregistrée du site.
+                if (f == null && _siteList.where((x) => x.name == a.siteName && x.fix != null).firstOrNull
+                    case final site?)
+                  OutlinedButton.icon(
+                    onPressed: () => openUrl(site.fix!.mapUrl),
+                    icon: const Icon(Icons.home_work, size: 18, color: warn),
+                    label: Text(t('map_site_fallback')),
+                  ),
                 if (f != null)
                   OutlinedButton.icon(
                     onPressed: () => openUrl(f.mapUrl),

@@ -184,7 +184,9 @@ class _GuardHomeState extends State<GuardHome> {
       'status': 'open',
       'at': Timestamp.fromDate(now),
       if (f != null) ...f.write(''),
+      if (f == null && r.error != null) 'gpsErr': r.error!.name,
     });
+    if (f == null) write.then(completeAlertFix).ignore();
     try {
       await write.timeout(const Duration(seconds: 6));
     } catch (_) {
