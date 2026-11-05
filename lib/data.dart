@@ -98,6 +98,10 @@ class UserDoc {
   final String? siteId;
 }
 
+/// Nom du client de chaque site (par nom de site), rempli dès qu'un site est
+/// lu : permet d'afficher le client à côté du site dans les listes.
+final siteClients = <String, String>{};
+
 class Site {
   Site(this.id, Map<String, dynamic> m)
       : name = _str(m['name']),
@@ -109,7 +113,9 @@ class Site {
               if (x is String) x,
         ],
         fix = Fix.read(m, ''),
-        radius = m['radius'] is num ? (m['radius'] as num).toInt() : 200;
+        radius = m['radius'] is num ? (m['radius'] as num).toInt() : 200 {
+    if (name.isNotEmpty) siteClients[name] = client;
+  }
   final String id, name, client;
   /// Type de site (particulier, villa, institution, banque, boutique…).
   final String type;
