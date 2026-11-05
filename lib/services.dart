@@ -21,6 +21,7 @@ const services = [
   'atm', // sécurisation de distributeurs / bureaux de change
   'health', // sécurisation d'hôpitaux et cliniques
   'vip', // protection de personnalités
+  'roadside', // assistance routière (panne, accident, voyage)
   'other', // autres services
 ];
 
@@ -44,6 +45,7 @@ const servicesFr = {
   'atm': 'Sécurisation de distributeurs et bureaux de change',
   'health': "Sécurisation d'hôpitaux et cliniques",
   'vip': 'Protection de personnalités',
+  'roadside': 'Assistance routière (panne, accident, voyage)',
   'other': 'Autres services',
 };
 
@@ -67,6 +69,7 @@ IconData serviceIcon(String s) => switch (s) {
       'atm' => Icons.atm,
       'health' => Icons.local_hospital,
       'vip' => Icons.star,
+      'roadside' => Icons.car_repair,
       _ => Icons.miscellaneous_services,
     };
 
