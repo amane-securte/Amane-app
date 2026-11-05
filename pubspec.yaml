@@ -1,7 +1,7 @@
 name: amane_app
 description: "Application AMANE Sécurité privée – أمان للأمن الخصوصي"
 publish_to: 'none'
-version: 1.0.14+41
+version: 1.0.15+42
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -36,6 +36,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/siren.wav
+    - assets/chime.wav
     - assets/logo_full.png
     - assets/logo_full_t.png
 

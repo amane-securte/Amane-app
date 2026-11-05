@@ -45,6 +45,18 @@ class _ClientSiteTabState extends State<ClientSiteTab> {
   @override
   void initState() {
     super.initState();
+    _listen();
+  }
+
+  // Le site du client peut être attribué ou changé pendant que l'appli est ouverte.
+  @override
+  void didUpdateWidget(covariant ClientSiteTab old) {
+    super.didUpdateWidget(old);
+    if (old.me.siteId != widget.me.siteId) setState(_listen);
+  }
+
+  void _listen() {
+    _punches = _logs = _shifts = null;
     final sid = widget.me.siteId;
     if (sid != null) {
       // Filtrés sur le site du client : les règles de sécurité l'exigent.

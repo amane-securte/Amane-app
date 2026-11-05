@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -5,6 +7,7 @@ import 'data.dart';
 import 'emergency.dart';
 import 'geo.dart';
 import 'i18n.dart';
+import 'notify.dart';
 import 'client_site.dart';
 import 'messages.dart';
 import 'theme.dart';
@@ -43,10 +46,37 @@ class _ClientHomeState extends State<ClientHome> {
   T get t => T(widget.prefs.lang);
   UserDoc get me => widget.me;
 
+  final _chimeSubs = <StreamSubscription<Object?>>[];
+
   @override
   void initState() {
     super.initState();
     _shareSiteLocation();
+    String s(Object? v) => v is String ? v : '';
+    // Réponses d'AMANE et main courante du site : son + bandeau.
+    _chimeSubs.add(watchNew(db.collection('messages').where('clientUid', isEqualTo: me.id), (m) {
+      if (s(m['from']) == 'client') return;
+      Chime.play();
+      if (mounted) snack(context, t('chime_reply', {'x': s(m['text'])}), color: navy);
+    }));
+    final sid = me.siteId;
+    if (sid != null) {
+      _chimeSubs.add(watchNew(db.collection('logs').where('siteId', isEqualTo: sid), (m) {
+        Chime.play();
+        if (mounted) {
+          snack(context, t('chime_log', {'n': s(m['name']), 's': s(m['siteName']), 'c': t('cat_${s(m['category'])}')}),
+              color: s(m['category']) == 'incident' ? danger : navy);
+        }
+      }));
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final s in _chimeSubs) {
+      s.cancel();
+    }
+    super.dispose();
   }
 
   /// Site créé « automatiquement depuis le téléphone du client » : à la

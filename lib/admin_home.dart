@@ -13,6 +13,7 @@ import 'guard_home.dart';
 import 'logbook.dart';
 import 'map_tab.dart';
 import 'messages.dart';
+import 'notify.dart';
 import 'people.dart';
 import 'planning.dart';
 import 'services.dart';
@@ -56,11 +57,15 @@ class _AdminHomeState extends State<AdminHome> {
   final _placed = <String>{};
   StreamSubscription<QueryMap>? _placeSub;
   StreamSubscription<AlertDoc>? _alarmSub;
+  final _chimeSubs = <StreamSubscription<Object?>>[];
 
   @override
   void dispose() {
     _placeSub?.cancel();
     _alarmSub?.cancel();
+    for (final s in _chimeSubs) {
+      s.cancel();
+    }
     ControlRoom.instance.detach();
     super.dispose();
   }
@@ -75,6 +80,21 @@ class _AdminHomeState extends State<AdminHome> {
     _alarmSub = cr.newAlerts.listen((a) {
       if (mounted) _alarm(a);
     });
+    // Son + bandeau à chaque nouveau message client et nouvelle entrée de la main courante.
+    String s(Object? v) => v is String ? v : '';
+    _chimeSubs.add(watchNew(db.collection('messages').where('from', isEqualTo: 'client'), (m) {
+      Chime.play();
+      if (mounted) snack(context, t('chime_msg', {'n': s(m['clientName']), 'x': s(m['text'])}), color: navy);
+    }));
+    _chimeSubs.add(watchNew(
+        db.collection('logs').where('at',
+            isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 1)))), (m) {
+      Chime.play();
+      if (mounted) {
+        snack(context, t('chime_log', {'n': s(m['name']), 's': s(m['siteName']), 'c': t('cat_${s(m['category'])}')}),
+            color: s(m['category']) == 'incident' ? danger : navy);
+      }
+    }));
     // Reporte sur le site la position envoyée par le téléphone du client.
     if (widget.director) _placeSub = db.collection('users').snapshots().listen((q) async {
       for (final d in q.docs) {
