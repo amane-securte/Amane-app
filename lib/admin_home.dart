@@ -391,6 +391,8 @@ class _AdminHomeState extends State<AdminHome> {
         for (final p in onDuty)
           if (mobileJobs.contains(p.job) && p.uid != a.uid && p.bestFix != null) (p, distanceM(f, p.bestFix!)),
     ]..sort((x, y) => x.$2.compareTo(y.$2));
+    final fallback =
+        f == null ? _siteList.where((x) => x.name == a.siteName && x.fix != null).firstOrNull : null;
     return Card(
       color: open ? const Color(0xFFFBE9E7) : paper,
       margin: const EdgeInsets.only(bottom: 8),
@@ -481,10 +483,9 @@ class _AdminHomeState extends State<AdminHome> {
               runSpacing: 6,
               children: [
                 // Pas de position GPS : à défaut, l'adresse enregistrée du site.
-                if (f == null && _siteList.where((x) => x.name == a.siteName && x.fix != null).firstOrNull
-                    case final site?)
+                if (fallback != null)
                   OutlinedButton.icon(
-                    onPressed: () => openUrl(site.fix!.mapUrl),
+                    onPressed: () => openUrl(fallback.fix!.mapUrl),
                     icon: const Icon(Icons.home_work, size: 18, color: warn),
                     label: Text(t('map_site_fallback')),
                   ),
