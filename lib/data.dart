@@ -52,7 +52,7 @@ DateTime? _date(dynamic v) => v is Timestamp ? v.toDate() : null;
 String _str(dynamic v) => v is String ? v : '';
 
 /// Postes dans la société (indépendants des droits dans l'appli).
-const jobs = ['guard', 'mobile', 'bodyguard', 'driver', 'supervisor', 'accountant', 'admin_staff', 'manager', 'dg', 'other'];
+const jobs = ['guard', 'mobile', 'bodyguard', 'driver', 'supervisor', 'accountant', 'admin_staff', 'manager', 'operator', 'dg', 'other'];
 
 const jobsFr = {
   'guard': 'Agent de sécurité',
@@ -63,6 +63,7 @@ const jobsFr = {
   'accountant': 'Comptable',
   'admin_staff': 'Employé administratif',
   'manager': 'Directeur / responsable',
+  'operator': 'Responsable de la salle de contrôle',
   'dg': 'Directeur Général',
   'other': 'Autre',
 };

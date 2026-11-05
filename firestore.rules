@@ -16,6 +16,11 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
     function isAdmin() { return isOwner() || (hasProfile() && profile().role == 'admin'); }
+    // Directeur : tout. Le responsable de la salle de contrôle (poste « operator »)
+    // voit tout sauf la comptabilité et ne gère ni le personnel ni les sites.
+    function isDirector() {
+      return isOwner() || (hasProfile() && profile().role == 'admin' && profile().get('job', '') != 'operator');
+    }
     function isGuard() { return hasProfile() && profile().role in ['guard', 'admin']; }
     function isClient() { return hasProfile() && profile().role == 'client'; }
     // Superviseur : voit les sites, qui y travaille, la main courante et les SOS.
@@ -43,12 +48,12 @@ service cloud.firestore {
         && (request.resource.data.role == 'pending'
             || (isOwner() && request.resource.data.role == 'admin'));
       // Un employé ne peut changer ni son rôle, ni son site, ni son poste.
-      allow update: if isAdmin()
+      allow update: if isDirector()
         || (signedIn() && request.auth.uid == uid
             && request.resource.data.role == resource.data.role
             && request.resource.data.get('siteId', null) == resource.data.get('siteId', null)
             && request.resource.data.get('job', null) == resource.data.get('job', null));
-      allow delete: if isAdmin();
+      allow delete: if isDirector();
     }
 
     // Sites : l'agent ne voit que le sien ; superviseurs et agents itinérants
@@ -57,7 +62,7 @@ service cloud.firestore {
       allow read: if isAdmin() || isMobile()
         || (isGuard() && id == profile().get('siteId', ''))
         || (isClient() && id == profile().siteId);
-      allow write: if isAdmin();
+      allow write: if isDirector();
     }
 
     // Pointages : chaque agent écrit et lit les siens.
@@ -67,13 +72,13 @@ service cloud.firestore {
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
       // L'agent ne peut que pointer son départ (une seule fois) et envoyer sa
       // position pendant le service : jamais modifier l'heure d'arrivée ou le site.
-      allow update: if isAdmin()
+      allow update: if isDirector()
         || (isGuard() && resource.data.uid == request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['outAt', 'outLat', 'outLng', 'outAcc', 'outDist', 'outOk',
                            'lastLat', 'lastLng', 'lastAcc', 'lastAt'])
             && !('outAt' in resource.data));
-      allow delete: if isAdmin();
+      allow delete: if isDirector();
     }
 
     // Planning : chaque agent voit ses missions, l'administration les gère.
@@ -91,7 +96,7 @@ service cloud.firestore {
       // L'agent n'écrit que dans la main courante de son propre site.
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid
         && request.resource.data.get('siteId', null) == profile().get('siteId', null);
-      allow update, delete: if isAdmin();
+      allow update, delete: if isDirector();
     }
 
     // Photos de la main courante (preuves) : image JPEG compressée en base64.
@@ -101,7 +106,7 @@ service cloud.firestore {
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid
         && request.resource.data.get('siteId', null) == profile().get('siteId', null)
         && request.resource.data.data is string && request.resource.data.data.size() < 950000;
-      allow update, delete: if isAdmin();
+      allow update, delete: if isDirector();
     }
 
     // Consignes de site : proposées par le client, validées par AMANE,
@@ -119,19 +124,19 @@ service cloud.firestore {
 
     // Fiches de paie publiées : l'administration et l'employé concerné seulement.
     match /payslips/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow write: if isAdmin();
+      allow read: if isDirector() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if isDirector();
     }
 
-    // Taux (salaires, tarifs) : réservés à l'administration.
+    // Taux (salaires, tarifs, dépenses) : réservés au Directeur.
     match /rates/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if isDirector();
     }
 
     // Factures envoyées au client : lecture par le client du site concerné.
     match /invoices/{id} {
-      allow read: if isAdmin() || mySite(resource.data);
-      allow write: if isAdmin();
+      allow read: if isDirector() || mySite(resource.data);
+      allow write: if isDirector();
     }
 
     // Alertes SOS : employés et clients actifs (pas les comptes en attente ou

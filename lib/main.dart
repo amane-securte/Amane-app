@@ -94,7 +94,7 @@ class RoleGate extends StatelessWidget {
           return ConsentScreen(prefs: prefs, me: me);
         }
         if (isOwner || me.role == 'admin') {
-          return AdminHome(prefs: prefs, me: me);
+          return AdminHome(prefs: prefs, me: me, director: isOwner || me.job != 'operator');
         }
         if (me.role == 'guard') return GuardHome(prefs: prefs, me: me);
         if (me.role == 'client') return ClientHome(prefs: prefs, me: me);

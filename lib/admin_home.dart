@@ -23,7 +23,9 @@ import 'widgets.dart';
 
 /// Écran de l'administrateur : suivi en direct, agents, sites.
 class AdminHome extends StatefulWidget {
-  const AdminHome({super.key, required this.prefs, required this.me});
+  const AdminHome({super.key, required this.prefs, required this.me, this.director = true});
+  /// false : responsable de la salle de contrôle (tout sauf la comptabilité,
+  /// en lecture seule pour le personnel et les sites).
   final Prefs prefs;
   final UserDoc me;
 
@@ -73,7 +75,7 @@ class _AdminHomeState extends State<AdminHome> {
       if (mounted) _alarm(a);
     });
     // Reporte sur le site la position envoyée par le téléphone du client.
-    _placeSub = db.collection('users').snapshots().listen((q) async {
+    if (widget.director) _placeSub = db.collection('users').snapshots().listen((q) async {
       for (final d in q.docs) {
         final m = d.data();
         final sid = m['siteId'];
@@ -94,11 +96,12 @@ class _AdminHomeState extends State<AdminHome> {
   }
 
   T get t => T(widget.prefs.lang);
+  bool get _dir => widget.director;
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 8,
+      length: _dir ? 8 : 7,
       child: Scaffold(
         appBar: amaneAppBar(
           context,
@@ -116,7 +119,7 @@ class _AdminHomeState extends State<AdminHome> {
               Tab(text: t('tab_plan')),
               Tab(text: t('tab_guards')),
               Tab(text: t('tab_sites')),
-              Tab(text: t('tab_acc')),
+              if (_dir) Tab(text: t('tab_acc')),
               Tab(text: t('tab_msg')),
             ],
           ),
@@ -147,7 +150,7 @@ class _AdminHomeState extends State<AdminHome> {
                     PlanningTab(t: t, guards: users, sites: sites),
                     _guardsTab(sites, users, me),
                     _sitesTab(sites),
-                    AccountingTab(t: t, users: everyone, sites: sites),
+                    if (_dir) AccountingTab(t: t, users: everyone, sites: sites),
                     AdminMessagesTab(t: t),
                   ],
                 );
@@ -487,8 +490,9 @@ class _AdminHomeState extends State<AdminHome> {
                   itemBuilder: (_) => [
                     if (u.phone.isNotEmpty)
                       PopupMenuItem(value: 'call', child: Text(t('call'))),
-                    if (u.phone.isNotEmpty)
+                    if (u.phone.isNotEmpty && _dir)
                       PopupMenuItem(value: 'invite', child: Text(t('invite_again'))),
+                    if (_dir) ...[
                     if (u.role != 'client')
                       PopupMenuItem(value: 'job', child: Text(t('edit_staff'))),
                     PopupMenuItem(value: 'info', child: Text(t('info_menu'))),
@@ -503,6 +507,7 @@ class _AdminHomeState extends State<AdminHome> {
                       PopupMenuItem(value: 'disable', child: Text(t('disable')))
                     else
                       PopupMenuItem(value: 'guard', child: Text(t('enable'))),
+                    ],
                   ],
                 ),
               ),
@@ -526,7 +531,7 @@ class _AdminHomeState extends State<AdminHome> {
                           title: Text(u.name),
                           subtitle: ltrText(u.phone),
                           trailing: FilledButton(
-                            onPressed: () => _assign(u, sites, approve: true),
+                            onPressed: _dir ? () => _assign(u, sites, approve: true) : null,
                             child: Text(t('approve')),
                           ),
                         ),
@@ -540,10 +545,12 @@ class _AdminHomeState extends State<AdminHome> {
                     leading: Icon(jobIcon(me.job), color: gold),
                     title: Text('${me.name} · ${t('me_label')}'),
                     subtitle: Text([t('job_${me.job}'), if (me.mission.isNotEmpty) me.mission].join(' · ')),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => editStaff(context, t, me),
-                    ),
+                    trailing: _dir
+                        ? IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => editStaff(context, t, me),
+                          )
+                        : null,
                   ),
                 ),
                 _h(t('sec_guards', {'n': '${staff.length}'})),
@@ -560,7 +567,7 @@ class _AdminHomeState extends State<AdminHome> {
                 ],
               ],
             ),
-            PositionedDirectional(
+            if (_dir) PositionedDirectional(
               end: 16,
               bottom: 16,
               child: FloatingActionButton.extended(
@@ -691,7 +698,7 @@ class _AdminHomeState extends State<AdminHome> {
                           : '${s.fix!.lat.toStringAsFixed(5)}, ${s.fix!.lng.toStringAsFixed(5)} · ${s.radius} m',
                     ].join('\n')),
                     isThreeLine: s.services.isNotEmpty,
-                    onTap: () => _editSite(s),
+                    onTap: _dir ? () => _editSite(s) : null,
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                       IconButton(
                         tooltip: t('ins_title'),
@@ -709,7 +716,7 @@ class _AdminHomeState extends State<AdminHome> {
                 )),
           ],
         ),
-        PositionedDirectional(
+        if (_dir) PositionedDirectional(
           end: 16,
           bottom: 16,
           child: FloatingActionButton.extended(

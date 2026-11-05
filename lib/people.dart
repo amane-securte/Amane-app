@@ -399,6 +399,7 @@ IconData jobIcon(String j) => switch (j) {
       'accountant' => Icons.calculate,
       'admin_staff' => Icons.business_center,
       'manager' => Icons.manage_accounts,
+      'operator' => Icons.headset_mic,
       'dg' => Icons.workspace_premium,
       _ => Icons.person,
     };
