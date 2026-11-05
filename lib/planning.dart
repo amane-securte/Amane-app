@@ -5,6 +5,18 @@ import 'i18n.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
+/// Durée d'une mission « HH:MM »–« HH:MM » (passe minuit si fin ≤ début).
+String shiftHours(String start, String end) {
+  int m(String x) {
+    final p = x.split(':');
+    return (int.tryParse(p.first) ?? 0) * 60 + (int.tryParse(p.last) ?? 0);
+  }
+  var d = m(end) - m(start);
+  if (d <= 0) d += 24 * 60;
+  final h = d ~/ 60, mn = d % 60;
+  return mn == 0 ? '$h' : '$h:${two(mn)}';
+}
+
 String ymd(DateTime d) => '${d.year}-${two(d.month)}-${two(d.day)}';
 DateTime parseYmd(String s) => DateTime.tryParse(s) ?? DateTime.now();
 DateTime weekStart(DateTime d) =>
@@ -223,25 +235,32 @@ class _PlanningTabState extends State<PlanningTab> {
                 ),
                 const SizedBox(height: 10),
                 Wrap(
-                  spacing: 8,
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
-                    ChoiceChip(
-                      label: Text(t('preset_day')),
-                      selected: start == '07:00' && end == '19:00',
-                      onSelected: (_) => setD(() {
-                        start = '07:00';
-                        end = '19:00';
-                      }),
-                    ),
-                    ChoiceChip(
-                      label: Text(t('preset_night')),
-                      selected: start == '19:00' && end == '07:00',
-                      onSelected: (_) => setD(() {
-                        start = '19:00';
-                        end = '07:00';
-                      }),
-                    ),
+                    // Durées courantes : 12 h, 8 h (3 équipes), 24 h ; ou heures libres ci-dessous.
+                    for (final (lbl, a, b) in [
+                      (t('preset_day'), '07:00', '19:00'),
+                      (t('preset_night'), '19:00', '07:00'),
+                      ('8 h · 06:00–14:00', '06:00', '14:00'),
+                      ('8 h · 14:00–22:00', '14:00', '22:00'),
+                      ('8 h · 22:00–06:00', '22:00', '06:00'),
+                      ('24 h · 07:00–07:00', '07:00', '07:00'),
+                    ])
+                      ChoiceChip(
+                        label: Text(lbl),
+                        selected: start == a && end == b,
+                        onSelected: (_) => setD(() {
+                          start = a;
+                          end = b;
+                        }),
+                      ),
                   ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(t('shift_custom', {'h': shiftHours(start, end)}),
+                      style: const TextStyle(color: muted, fontSize: 12.5)),
                 ),
                 Row(
                   children: [

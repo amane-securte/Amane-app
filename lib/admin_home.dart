@@ -46,6 +46,8 @@ class _AdminHomeState extends State<AdminHome> {
               DateTime.now().subtract(const Duration(hours: 24))))
       .snapshots();
   late final Stream<QueryMap> _users = db.collection('users').snapshots();
+  late final Stream<QueryMap> _todayShifts =
+      db.collection('shifts').where('date', isEqualTo: ymd(DateTime.now())).snapshots();
   late final Stream<QueryMap> _sites = db.collection('sites').snapshots();
   late final Stream<QueryMap> _logs = db
       .collection('logs')
@@ -86,6 +88,29 @@ class _AdminHomeState extends State<AdminHome> {
       Chime.play();
       if (mounted) snack(context, t('chime_msg', {'n': s(m['clientName']), 'x': s(m['text'])}), color: navy);
     }));
+    // Début et fin de service de chaque agent.
+    final seenOut = <String>{};
+    var firstPunch = true;
+    _chimeSubs.add(db
+        .collection('punches')
+        .where('inAt', isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 24))))
+        .snapshots()
+        .listen((q) {
+      for (final c in q.docChanges) {
+        final p = PunchDoc(c.doc.id, c.doc.data() ?? const {});
+        final fresh = !firstPunch && !c.doc.metadata.hasPendingWrites;
+        if (p.outAt != null && seenOut.add(p.id) && fresh &&
+            DateTime.now().difference(p.outAt!) < const Duration(minutes: 15)) {
+          Chime.play();
+          if (mounted) snack(context, t('chime_out', {'n': p.name, 's': p.siteName, 't': hm(p.outAt!)}), color: navy);
+        } else if (c.type == DocumentChangeType.added && p.outAt == null && fresh &&
+            DateTime.now().difference(p.inAt) < const Duration(minutes: 15)) {
+          Chime.play();
+          if (mounted) snack(context, t('chime_in', {'n': p.name, 's': p.siteName, 't': hm(p.inAt)}), color: okGreen);
+        }
+      }
+      firstPunch = false;
+    }, onError: (_) {}));
     _chimeSubs.add(watchNew(
         db.collection('logs').where('at',
             isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 1)))), (m) {
@@ -497,8 +522,38 @@ class _AdminHomeState extends State<AdminHome> {
   // ---------------------------------------------------------------- Agents
 
   Widget _guardsTab(List<Site> sites, List<UserDoc> users, UserDoc me) {
-    return Builder(
-      builder: (context) {
+    return StreamBuilder<QueryMap>(
+      stream: _punches,
+      builder: (context, pSnap) => StreamBuilder<QueryMap>(
+      stream: _todayShifts,
+      builder: (context, shSnap) {
+        // Pointage le plus récent (24 h) et mission prévue aujourd'hui, par agent.
+        final lastPunch = <String, PunchDoc>{};
+        for (final d in pSnap.data?.docs ?? const []) {
+          final p = PunchDoc(d.id, d.data());
+          final cur = lastPunch[p.uid];
+          if (cur == null || p.inAt.isAfter(cur.inAt)) lastPunch[p.uid] = p;
+        }
+        final todayShift = <String, ShiftDoc>{
+          for (final d in shSnap.data?.docs ?? const []) ShiftDoc(d.id, d.data()).uid: ShiftDoc(d.id, d.data()),
+        };
+        Widget? dutyLine(UserDoc u) {
+          if (u.role != 'guard' && u.role != 'admin') return null;
+          final sh = todayShift[u.id];
+          final p = lastPunch[u.id];
+          final parts = <String>[
+            if (sh != null) t('duty_planned', {'s': sh.start, 'e': sh.end}),
+            if (p != null) t('duty_in', {'t': hm(p.inAt)}),
+            if (p?.outAt != null) t('duty_out', {'t': hm(p.outAt!)}),
+            if (p == null) t('duty_none'),
+          ];
+          final on = p != null && p.open;
+          return Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(parts.join(' · '),
+                style: TextStyle(fontSize: 12.5, color: on ? okGreen : (p == null ? warn : muted), fontWeight: FontWeight.w600)),
+          );
+        }
         final pending = users.where((u) => u.role == 'pending').toList();
         final staff = users.where((u) => u.role == 'guard' || u.role == 'admin').toList()
           ..sort((a, b) {
@@ -522,14 +577,17 @@ class _AdminHomeState extends State<AdminHome> {
                     ),
                   ],
                 ]),
-                subtitle: Text(
-                  [
-                    if (u.role != 'client') t('job_${u.job}'),
-                    if (u.mission.isNotEmpty) u.mission,
-                    if (u.phone.isNotEmpty) u.phone,
-                    if (u.siteId != null) siteName[u.siteId] ?? '—',
-                  ].join(' · '),
-                ),
+                subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                    [
+                      if (u.role != 'client') t('job_${u.job}'),
+                      if (u.mission.isNotEmpty) u.mission,
+                      if (u.phone.isNotEmpty) u.phone,
+                      if (u.siteId != null) siteName[u.siteId] ?? '—',
+                    ].join(' · '),
+                  ),
+                  if (dutyLine(u) != null) dutyLine(u)!,
+                ]),
                 leading: u.role == 'guard' || u.role == 'admin'
                     ? Icon(jobIcon(u.job), color: u.role == 'admin' ? gold : navy)
                     : _roleIcon(u.role),
@@ -640,6 +698,7 @@ class _AdminHomeState extends State<AdminHome> {
           ],
         );
       },
+      ),
     );
   }
 

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'data.dart';
 import 'expenses.dart';
 import 'export.dart';
+import 'guard_home.dart';
 import 'people.dart';
 import 'services.dart';
 import 'i18n.dart';
@@ -874,9 +875,19 @@ class AccountantHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = T(prefs.lang);
-    return Scaffold(
-      appBar: amaneAppBar(context, prefs),
-      body: StreamBuilder<QueryMap>(
+    // Le comptable pointe aussi son arrivée et son départ (onglet « Mon service »).
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+      appBar: amaneAppBar(context, prefs,
+          bottom: TabBar(
+            labelColor: const Color(0xFFD1A850),
+            unselectedLabelColor: const Color(0xFFB8C2CC),
+            indicatorColor: const Color(0xFFD1A850),
+            tabs: [Tab(text: t('tab_acc')), Tab(text: t('tab_mine'))],
+          )),
+      body: TabBarView(physics: const NeverScrollableScrollPhysics(), children: [
+      StreamBuilder<QueryMap>(
         stream: db.collection('sites').snapshots(),
         builder: (context, sSnap) => StreamBuilder<QueryMap>(
           stream: db.collection('users').snapshots(),
@@ -891,6 +902,9 @@ class AccountantHome extends StatelessWidget {
             return AccountingTab(t: t, users: users, sites: sites, director: false);
           },
         ),
+      ),
+      GuardHome(prefs: prefs, me: me, embedded: true),
+      ]),
       ),
     );
   }

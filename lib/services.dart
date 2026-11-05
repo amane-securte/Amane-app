@@ -74,9 +74,10 @@ IconData serviceIcon(String s) => switch (s) {
     };
 
 /// Types de sites / clients.
-const siteTypes = ['individual', 'villa', 'institution', 'bank', 'agency', 'hospital', 'clinic', 'shop', 'embassy', 'event', 'other'];
+const siteTypes = ['office', 'individual', 'villa', 'institution', 'bank', 'agency', 'hospital', 'clinic', 'shop', 'embassy', 'event', 'other'];
 
 const siteTypesFr = {
+  'office': 'Siège / bureaux AMANE',
   'individual': 'Particulier',
   'villa': 'Villa',
   'institution': 'Institution / entreprise',
@@ -91,6 +92,7 @@ const siteTypesFr = {
 };
 
 IconData siteTypeIcon(String s) => switch (s) {
+      'office' => Icons.business,
       'individual' => Icons.person,
       'villa' => Icons.villa,
       'institution' => Icons.apartment,
