@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
@@ -143,6 +144,7 @@ class _AdminHomeState extends State<AdminHome> {
 
   T get t => T(widget.prefs.lang);
   bool get _dir => widget.director;
+  List<Site> _siteList = const [];
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +179,7 @@ class _AdminHomeState extends State<AdminHome> {
                 .map((d) => Site(d.id, d.data()))
                 .toList()
               ..sort((a, b) => a.name.compareTo(b.name));
+            _siteList = sites;
             return StreamBuilder<QueryMap>(
               stream: _users,
               builder: (context, uSnap) {
@@ -195,7 +198,7 @@ class _AdminHomeState extends State<AdminHome> {
                     MapTab(t: t, sites: sites),
                     PlanningTab(t: t, guards: users, sites: sites),
                     _guardsTab(sites, users, me),
-                    _sitesTab(sites),
+                    _sitesTab(sites, everyone),
                     if (_dir) AccountingTab(t: t, users: everyone, sites: sites),
                     AdminMessagesTab(t: t),
                   ],
@@ -816,7 +819,7 @@ class _AdminHomeState extends State<AdminHome> {
 
   // ---------------------------------------------------------------- Sites
 
-  Widget _sitesTab(List<Site> sites) {
+  Widget _sitesTab(List<Site> sites, List<UserDoc> users) {
     return Stack(
       children: [
         ListView(
@@ -839,6 +842,11 @@ class _AdminHomeState extends State<AdminHome> {
                     isThreeLine: s.services.isNotEmpty,
                     onTap: _dir ? () => _editSite(s) : null,
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        tooltip: t('share'),
+                        icon: const Icon(Icons.share, color: okGreen),
+                        onPressed: () => _shareSite(s, sites, users),
+                      ),
                       if (_dir)
                         IconButton(
                           tooltip: t('edit_site'),
@@ -872,6 +880,49 @@ class _AdminHomeState extends State<AdminHome> {
         ),
       ],
     );
+  }
+
+  /// Partage d'un site : position sur la carte, ou invitation du client.
+  Future<void> _shareSite(Site s, List<Site> sites, List<UserDoc> users) async {
+    final client = users.where((u) => u.role == 'client' && u.siteId == s.id).firstOrNull;
+    final v = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (s.fix != null)
+            ListTile(
+              leading: const Icon(Icons.map, color: danger),
+              title: Text(t('share_map')),
+              subtitle: Text(s.name),
+              onTap: () => Navigator.pop(ctx, 'map'),
+            ),
+          ListTile(
+            leading: const Icon(Icons.person, color: gold),
+            title: Text(client == null ? t('site_client_go') : t('invite_again')),
+            subtitle: Text(client == null ? t('site_client_none') : '${client.name} · ${client.phone}'),
+            onTap: () => Navigator.pop(ctx, 'client'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.download, color: navy),
+            title: Text(t('share_app_link')),
+            onTap: () => Navigator.pop(ctx, 'app'),
+          ),
+        ]),
+      ),
+    );
+    if (!mounted || v == null) return;
+    switch (v) {
+      case 'map':
+        await SharePlus.instance.share(ShareParams(text: '📍 ${s.name}\n${s.fix!.mapUrl}'));
+      case 'client':
+        if (client != null) {
+          await shareInvite(context, t, phone: client.phone);
+        } else if (_dir) {
+          await addPerson(context, t, sites, clientFor: s.id, clientName: s.client);
+        }
+      case 'app':
+        await shareInvite(context, t);
+    }
   }
 
   Future<void> _editSite(Site? s) async {
@@ -1032,7 +1083,28 @@ class _AdminHomeState extends State<AdminHome> {
         'services': [for (final sv in services) if (svc.contains(sv)) sv],
       };
       if (s == null) {
-        await db.collection('sites').add(data);
+        final ref = await db.collection('sites').add(data);
+        if (!mounted) return;
+        snack(context, t('saved'), color: okGreen);
+        // Nouveau site : proposer tout de suite le compte du client et l'envoi du lien.
+        final go = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.person_add, color: navy, size: 36),
+            title: Text(t('site_client_q')),
+            content: Text(t('site_client_hint')),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('later'))),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t('site_client_go'))),
+            ],
+          ),
+        );
+        if (go == true && mounted) {
+          final created = Site(ref.id, data);
+          await addPerson(context, t, [..._siteList, created],
+              clientFor: ref.id, clientName: data['client'] as String? ?? '');
+        }
+        return;
       } else {
         await db.collection('sites').doc(s.id).update(data);
       }

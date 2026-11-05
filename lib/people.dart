@@ -94,12 +94,15 @@ Future<void> shareInvite(BuildContext context, T t,
 /// sans déconnecter l'administrateur (instance Firebase secondaire).
 const _newSite = '__new__';
 
-Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
-  final name = TextEditingController();
+/// [clientFor] : crée directement le compte du client de ce site (après
+/// l'ajout d'un site, ou depuis le bouton « Partager » du site).
+Future<void> addPerson(BuildContext context, T t, List<Site> sites,
+    {String? clientFor, String? clientName}) async {
+  final name = TextEditingController(text: clientName ?? '');
   final phone = TextEditingController();
   final pass = TextEditingController(
       text: '${100000 + math.Random.secure().nextInt(900000)}');
-  var role = 'guard';
+  var role = clientFor == null ? 'guard' : 'client';
   var job = 'guard';
   final mission = TextEditingController();
   final monthly = TextEditingController();
@@ -108,7 +111,7 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
   final contract = TextEditingController();
   final emergency = TextEditingController();
   final rep = TextEditingController();
-  String? siteId;
+  String? siteId = clientFor;
   final siteName = TextEditingController();
   // Nouveau site : position prise ici (« here ») ou plus tard (« later » ;
   // pour un client, son téléphone la fournira à la première connexion).
