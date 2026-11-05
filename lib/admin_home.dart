@@ -28,6 +28,7 @@ class AdminHome extends StatefulWidget {
   /// en lecture seule pour le personnel et les sites).
   final Prefs prefs;
   final UserDoc me;
+  final bool director;
 
   @override
   State<AdminHome> createState() => _AdminHomeState();
