@@ -333,7 +333,7 @@ Future<void> printPayslip({
   final net = amount + lines.fold<double>(0, (s, l) => s + l.$2);
   String signed(double v) => v < 0 ? '- ${_money(-v)}' : '+ ${_money(v)}';
   doc.addPage(lh.page([
-    _refLine('FICHE DE PAIE', month),
+    _refLine('BULLETIN DE SALAIRE', month),
     pw.Text(job.isEmpty ? 'Agent' : job, style: const pw.TextStyle(color: _grey)),
     pw.Text(name, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
     if (phone.isNotEmpty) pw.Text('Tél. $phone'),
@@ -370,13 +370,13 @@ Future<void> printPayslip({
       ],
     ),
   ]));
-  final file = 'Paie-${name.replaceAll(' ', '_')}-${month.replaceAll('/', '-')}.pdf';
+  final file = 'Bulletin-salaire-${name.replaceAll(' ', '_')}-${month.replaceAll('/', '-')}.pdf';
   if (share) {
     final bytes = await doc.save();
     await SharePlus.instance.share(ShareParams(
       files: [XFile.fromData(bytes, name: file, mimeType: 'application/pdf')],
       fileNameOverrides: [file],
-      text: 'AMANE – Fiche de paie $month – $name',
+      text: 'AMANE – Bulletin de salaire $month – $name',
     ));
   } else {
     await Printing.layoutPdf(onLayout: (_) => doc.save(), name: file);
@@ -422,7 +422,7 @@ Future<void> printPayrollRegister({
     ),
     pw.SizedBox(height: 10),
     pw.Text(
-        'Total à verser à la CNSS pour ce mois : ${_money(sum((r) => r.$7) + sum((r) => r.$9))} MRU (versement trimestriel, base plafonnée à 15 000 MRU).',
+        'Total à verser à la CNSS pour ce mois : ${_money(sum((r) => r.$7) + sum((r) => r.$9))} (versement trimestriel, base plafonnée à 15 000 MRU).',
         style: const pw.TextStyle(fontSize: 9.5)),
     pw.SizedBox(height: 26),
     pw.Align(
