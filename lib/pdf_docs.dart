@@ -351,8 +351,10 @@ Future<void> printPayslip({
     pw.SizedBox(height: 16),
     pw.Text(
         lines.isEmpty
-            ? 'Salaire brut calculé sur les heures pointées, avant cotisations et retenues.'
-            : 'Net à payer = salaire + primes - avances - retenues - absences - CNSS salarié.',
+            ? (monthly > 0
+                ? 'Salaire brut = salaire mensuel fixe, avant cotisations et retenues.'
+                : 'Salaire brut = heures pointées × taux horaire, avant cotisations et retenues.')
+            : 'Net à payer = salaire brut + primes − avances − retenues − absences − CNSS salarié.',
         style: const pw.TextStyle(color: _grey, fontSize: 10)),
     if (employerCharges > 0)
       pw.Text(
@@ -406,7 +408,7 @@ Future<void> printPayrollRegister({
     ]),
     pw.SizedBox(height: 10),
     pw.TableHelper.fromTextArray(
-      headers: ['Employé', 'Poste', 'Heures', 'Brut', 'Primes / retenues', 'CNSS 1 %', 'Net', 'CNSS empl. 15 %'],
+      headers: ['Employé', 'Poste', 'Heures', 'Brut', 'Primes / retenues', 'CNSS salarié 1 %', 'Net à payer', 'CNSS employeur 15 %'],
       data: [
         for (final r in rows)
           [r.$1, r.$2, r.$3 == 0 ? '' : _h(r.$3), _money(r.$5), sg(r.$6), _money(r.$7), _money(r.$8), _money(r.$9)],
