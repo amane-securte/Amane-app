@@ -18,6 +18,15 @@ service cloud.firestore {
     function isAdmin() { return isOwner() || (hasProfile() && profile().role == 'admin'); }
     function isGuard() { return hasProfile() && profile().role in ['guard', 'admin']; }
     function isClient() { return hasProfile() && profile().role == 'client'; }
+    // Superviseur : voit les sites, qui y travaille, la main courante et les SOS.
+    // Jamais la paie, les tarifs, les factures ni les messages clients.
+    function isSupervisor() {
+      return hasProfile() && profile().role == 'guard' && profile().get('job', '') == 'supervisor';
+    }
+    // Agents itinérants : ils doivent connaître les sites pour le pointage automatique.
+    function isMobile() {
+      return isGuard() && profile().get('job', '') in ['mobile', 'supervisor', 'bodyguard', 'driver'];
+    }
     // Le client ne voit que les données de son propre site.
     function mySite(data) { return isClient() && data.siteId == profile().siteId; }
     // Agent affecté au même site que l'entrée (collègues du poste).
@@ -26,29 +35,34 @@ service cloud.firestore {
         && data.siteId == profile().siteId;
     }
 
-    // Comptes : chacun voit le sien, l'administration voit et gère tout.
+    // Comptes : chacun voit le sien, le Directeur voit et gère tout.
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin()
+        || (isSupervisor() && resource.data.role == 'guard'));
       allow create: if signedIn() && request.auth.uid == uid
         && (request.resource.data.role == 'pending'
             || (isOwner() && request.resource.data.role == 'admin'));
-      // Un agent ne peut changer ni son rôle ni son site.
+      // Un employé ne peut changer ni son rôle, ni son site, ni son poste.
       allow update: if isAdmin()
         || (signedIn() && request.auth.uid == uid
             && request.resource.data.role == resource.data.role
-            && request.resource.data.get('siteId', null) == resource.data.get('siteId', null));
+            && request.resource.data.get('siteId', null) == resource.data.get('siteId', null)
+            && request.resource.data.get('job', null) == resource.data.get('job', null));
       allow delete: if isAdmin();
     }
 
-    // Sites : lus par les agents, gérés par l'administration.
+    // Sites : l'agent ne voit que le sien ; superviseurs et agents itinérants
+    // voient tous les sites ; gérés par le Directeur.
     match /sites/{id} {
-      allow read: if isGuard() || (isClient() && id == profile().siteId);
+      allow read: if isAdmin() || isMobile()
+        || (isGuard() && id == profile().get('siteId', ''))
+        || (isClient() && id == profile().siteId);
       allow write: if isAdmin();
     }
 
     // Pointages : chaque agent écrit et lit les siens.
     match /punches/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
+      allow read: if isAdmin() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid)
         || mySite(resource.data);
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
       // L'agent ne peut que pointer son départ (une seule fois) et envoyer sa
@@ -64,7 +78,7 @@ service cloud.firestore {
 
     // Planning : chaque agent voit ses missions, l'administration les gère.
     match /shifts/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
+      allow read: if isAdmin() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid)
         || mySite(resource.data);
       allow write: if isAdmin();
     }
@@ -72,7 +86,7 @@ service cloud.firestore {
     // Main courante : confidentielle. Lecture réservée à l'administration,
     // au client du site et aux agents affectés à ce même site.
     match /logs/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
+      allow read: if isAdmin() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid)
         || mySite(resource.data) || sameSiteGuard(resource.data);
       // L'agent n'écrit que dans la main courante de son propre site.
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid
@@ -82,7 +96,7 @@ service cloud.firestore {
 
     // Photos de la main courante (preuves) : image JPEG compressée en base64.
     match /photos/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid)
+      allow read: if isAdmin() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid)
         || mySite(resource.data) || sameSiteGuard(resource.data);
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid
         && request.resource.data.get('siteId', null) == profile().get('siteId', null)
@@ -94,7 +108,7 @@ service cloud.firestore {
     // visibles par le client du site et, une fois validées, par ses agents.
     match /instructions/{id} {
       allow read: if isAdmin() || mySite(resource.data)
-        || (sameSiteGuard(resource.data) && resource.data.status == 'approved');
+        || ((sameSiteGuard(resource.data) || isSupervisor()) && resource.data.status == 'approved');
       allow create: if isAdmin()
         || (isClient() && request.resource.data.siteId == profile().siteId
             && request.resource.data.status == 'pending'
@@ -123,7 +137,7 @@ service cloud.firestore {
     // Alertes SOS : employés et clients actifs (pas les comptes en attente ou
     // désactivés) ; l'administration les traite.
     match /alerts/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow read: if isAdmin() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if (isGuard() || isClient()) && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == 'open';
       allow update, delete: if isAdmin();

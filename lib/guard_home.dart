@@ -8,6 +8,7 @@ import 'i18n.dart';
 import 'instructions.dart';
 import 'logbook.dart';
 import 'payslips.dart';
+import 'supervisor.dart';
 import 'planning.dart';
 import 'tracking.dart';
 import 'theme.dart';
@@ -241,6 +242,16 @@ class _GuardHomeState extends State<GuardHome> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (me.job == 'supervisor') ...[
+          FilledButton.tonalIcon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            onPressed: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => SupervisorScreen(t: t))),
+            icon: const Icon(Icons.supervisor_account),
+            label: Text(t('sup_title')),
+          ),
+          const SizedBox(height: 12),
+        ],
         _statusCard(site, open),
         const SizedBox(height: 14),
         SizedBox(
