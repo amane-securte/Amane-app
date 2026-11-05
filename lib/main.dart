@@ -88,6 +88,18 @@ class RoleGate extends StatelessWidget {
           });
           return const LoadingScreen();
         }
+        if (!doc.exists && !isOwner) {
+          // Compte supprimé de la liste (par erreur ou non) : la personne qui se
+          // reconnecte réapparaît dans « Demandes d'inscription » ; la direction
+          // la rétablit (rôle, site) ou refuse.
+          final digits = (user.email ?? '').split('@').first;
+          db.collection('users').doc(user.uid).set({
+            'name': user.displayName?.isNotEmpty == true ? user.displayName : digits,
+            'phone': digits,
+            'role': 'pending',
+            'createdAt': Timestamp.now(),
+          }).catchError((_) {});
+        }
         if (doc.exists && me.role != 'pending' && me.role != 'disabled') {
           Push.register(user.uid);
         }
