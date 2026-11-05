@@ -201,3 +201,25 @@ class Prefs extends ChangeNotifier {
 
 /// Postes itinérants : pas de site fixe, donc pas d'alerte « hors site ».
 const mobileJobs = {'mobile', 'supervisor', 'bodyguard', 'driver'};
+
+// ---------------------------------------------------------------------------
+// Société et cotisations sociales (notification CNSS du 15/05/2025).
+// ---------------------------------------------------------------------------
+
+/// Plafond mensuel de cotisation et SMIG (MRU).
+const cnssCeiling = 15000.0;
+const smig = 4500.0;
+/// 14 % sécurité sociale (1 % salarié, 13 % employeur) + 2 % médecine du travail (employeur).
+const cnssEmployeeRate = 0.01;
+const cnssEmployerRate = 0.13;
+const workMedicineRate = 0.02;
+
+/// Cotisations d'un mois sur la base [taxable] (plafonnée).
+/// Renvoie (part salarié, part employeur y compris médecine du travail).
+(double, double) cnssFor(double taxable) {
+  final base = taxable <= 0 ? 0.0 : (taxable > cnssCeiling ? cnssCeiling : taxable);
+  return (
+    (base * cnssEmployeeRate).roundToDouble(),
+    (base * (cnssEmployerRate + workMedicineRate)).roundToDouble(),
+  );
+}

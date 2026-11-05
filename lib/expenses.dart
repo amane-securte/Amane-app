@@ -95,6 +95,7 @@ class ExpensesSection extends StatelessWidget {
     required this.sites,
     this.users = const [],
     this.salaries = 0,
+    this.cnss = 0,
   });
   final T t;
   final DateTime month;
@@ -103,6 +104,8 @@ class ExpensesSection extends StatelessWidget {
   final List<UserDoc> users;
   /// Masse salariale du mois (coût pour la société), comptée dans les dépenses.
   final double salaries;
+  /// Charges patronales CNSS + médecine du travail du mois.
+  final double cnss;
 
   String get _monthKey => '${month.year}-${two(month.month)}';
 
@@ -113,7 +116,7 @@ class ExpensesSection extends StatelessWidget {
       byCat[e.cat] = (byCat[e.cat] ?? 0) + e.amount;
     }
     final other = items.fold<double>(0, (s, e) => s + e.amount);
-    final total = other + salaries;
+    final total = other + salaries + cnss;
     final sorted = [...items]..sort((a, b) => b.date.compareTo(a.date));
     final cats = byCat.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
@@ -126,7 +129,7 @@ class ExpensesSection extends StatelessWidget {
               child: Text(t('expenses'),
                   style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
             ),
-            if (items.isNotEmpty || salaries > 0)
+            if (items.isNotEmpty || salaries > 0 || cnss > 0)
               IconButton(
                 tooltip: t('exp_pdf'),
                 icon: const Icon(Icons.picture_as_pdf, color: danger),
@@ -136,6 +139,7 @@ class ExpensesSection extends StatelessWidget {
                       month: '${two(month.month)}/${month.year}',
                       byCat: [
                         if (salaries > 0) ('Salaires et rémunérations', salaries),
+                        if (cnss > 0) ('Charges sociales CNSS (employeur)', cnss),
                         for (final c in cats) (expenseCatsFr[c.key] ?? c.key, c.value),
                       ],
                       lines: [
@@ -180,6 +184,17 @@ class ExpensesSection extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(child: Text(t('ec_salaries'))),
                         ltrText('${_money(salaries)} MRU',
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                  if (cnss > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(children: [
+                        const Icon(Icons.health_and_safety, size: 18, color: navy),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(t('cnss_employer'))),
+                        ltrText('${_money(cnss)} MRU',
                             style: const TextStyle(fontWeight: FontWeight.w600)),
                       ]),
                     ),

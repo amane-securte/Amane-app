@@ -136,14 +136,20 @@ class _AccountingTabState extends State<AccountingTab> {
       if (k.startsWith('m_') && (rates[k] ?? 0) > 0) monthlyUids.add(k.substring(2));
     }
     final payUids = {...byGuard.keys, ...adjByGuard.keys, ...monthlyUids};
-    var payTotal = 0.0, hTotal = 0.0, netTotal = 0.0;
+    var payTotal = 0.0, hTotal = 0.0, netTotal = 0.0, cnssEmpTotal = 0.0, cnssCoTotal = 0.0;
     final payRows = payUids.map((uid) {
       final h = byGuard[uid] ?? 0;
       final rate = rates['g_$uid'] ?? 0;
       final monthly = rates['m_$uid'] ?? 0;
       final gross = h * rate + monthly;
       final list = adjByGuard[uid] ?? const <Adj>[];
-      final net = gross + list.fold<double>(0, (s, a) => s + a.signed);
+      // Base CNSS : brut + primes − absences (avances et retenues exclues).
+      final taxable = gross +
+          list.where((a) => a.kind == 'bonus' || a.kind == 'absence').fold<double>(0, (s, a) => s + a.signed);
+      final (cnssEmp, cnssCo) = cnssFor(taxable);
+      cnssEmpTotal += cnssEmp;
+      cnssCoTotal += cnssCo;
+      final net = gross + list.fold<double>(0, (s, a) => s + a.signed) - cnssEmp;
       // Coût pour la société : l'avance n'est qu'un paiement anticipé.
       final cost = gross +
           list.where((a) => a.kind != 'advance').fold<double>(0, (s, a) => s + a.signed);
@@ -153,7 +159,7 @@ class _AccountingTabState extends State<AccountingTab> {
       final name = userName[uid] ??
           nameFromPunch[uid] ??
           (list.isNotEmpty ? list.first.name : '—');
-      return (uid, name, h, byGuardCount[uid] ?? 0, rate, gross, list, net, monthly);
+      return (uid, name, h, byGuardCount[uid] ?? 0, rate, gross, list, net, monthly, cnssEmp, cnssCo);
     }).toList()
       ..sort((a, b) => b.$8.compareTo(a.$8));
 
@@ -167,7 +173,7 @@ class _AccountingTabState extends State<AccountingTab> {
       ..sort((a, b) => a.$2.compareTo(b.$2));
 
     final expTotal = exps.fold<double>(0, (s, e) => s + e.amount);
-    final margin = invTotal - payTotal - expTotal;
+    final margin = invTotal - payTotal - cnssCoTotal - expTotal;
     final monthKey = '${_month.year}${two(_month.month)}';
 
     return ListView(
@@ -210,7 +216,9 @@ class _AccountingTabState extends State<AccountingTab> {
                           r.$9,
                           r.$6,
                           r.$7.fold<double>(0, (s, a) => s + a.signed),
+                          r.$10,
                           r.$8,
+                          r.$11,
                         ),
                     ],
                     expenses: exps,
@@ -252,13 +260,17 @@ class _AccountingTabState extends State<AccountingTab> {
               children: [
                 _kv(t('total_invoiced'), '${money(invTotal)} MRU'),
                 _kv(t('total_salaries'), '${money(payTotal)} MRU'),
+                _kv(t('cnss_employer'), '${money(cnssCoTotal)} MRU'),
                 _kv(t('other_expenses'), '${money(expTotal)} MRU'),
-                _kv(t('total_expenses'), '${money(payTotal + expTotal)} MRU', bold: true),
+                _kv(t('total_expenses'), '${money(payTotal + cnssCoTotal + expTotal)} MRU', bold: true),
                 _kv(t('net_to_pay'), '${money(netTotal)} MRU'),
                 const Divider(),
                 _kv(t('margin'), '${money(margin)} MRU',
                     color: margin < 0 ? danger : okGreen, bold: true),
                 _kv(t('hours_worked'), hours(hTotal)),
+                const Divider(),
+                _kv(t('cnss_due'), '${money(cnssEmpTotal + cnssCoTotal)} MRU', color: navy, bold: true),
+                Text(t('cnss_note'), style: const TextStyle(color: muted, fontSize: 11.5)),
               ],
             ),
           ),
@@ -302,7 +314,9 @@ class _AccountingTabState extends State<AccountingTab> {
                     rate: r.$5,
                     gross: r.$6,
                     adjs: r.$7,
-                    monthly: r.$9),
+                    monthly: r.$9,
+                    cnssEmp: r.$10,
+                    cnssCo: r.$11),
               ),
             )),
         const SizedBox(height: 18),
@@ -355,7 +369,13 @@ class _AccountingTabState extends State<AccountingTab> {
         }),
         const SizedBox(height: 18),
         ExpensesSection(
-            t: t, month: _month, items: exps, sites: widget.sites, users: widget.users, salaries: payTotal),
+            t: t,
+            month: _month,
+            items: exps,
+            sites: widget.sites,
+            users: widget.users,
+            salaries: payTotal,
+            cnss: cnssCoTotal),
         const SizedBox(height: 12),
         Text(t('acc_note'), style: const TextStyle(color: muted, fontSize: 12)),
         const SizedBox(height: 12),
@@ -413,10 +433,12 @@ class _AccountingTabState extends State<AccountingTab> {
     required double gross,
     required List<Adj> adjs,
     double monthly = 0,
+    double cnssEmp = 0,
+    double cnssCo = 0,
   }) async {
     final phone = widget.users.where((u) => u.id == uid).firstOrNull?.phone ?? '';
     final job = _job(uid);
-    final net = gross + adjs.fold<double>(0, (s, a) => s + a.signed);
+    final net = gross + adjs.fold<double>(0, (s, a) => s + a.signed) - cnssEmp;
     final v = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -466,8 +488,20 @@ class _AccountingTabState extends State<AccountingTab> {
                     ],
                   ),
                 ),
+              if (cnssEmp > 0)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.health_and_safety, color: danger),
+                  title: Text(t('cnss_employee')),
+                  trailing: ltrText('−${money(cnssEmp)}',
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: danger)),
+                ),
               const Divider(),
               _kv(t('net_to_pay'), '${money(net)} MRU', color: net < 0 ? danger : okGreen, bold: true),
+              if (cnssCo > 0)
+                Text(t('cnss_co_line', {'a': money(cnssCo)}),
+                    style: const TextStyle(color: muted, fontSize: 12)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -509,7 +543,11 @@ class _AccountingTabState extends State<AccountingTab> {
           rate: rate,
           monthly: monthly,
           job: jobsFr[job ?? 'guard'] ?? '',
-          lines: [for (final a in adjs) (pdfAdjLabel(a), a.signed)],
+          lines: [
+            for (final a in adjs) (pdfAdjLabel(a), a.signed),
+            if (cnssEmp > 0) ('Cotisation CNSS salarié (1 %)', -cnssEmp),
+          ],
+          employerCharges: cnssCo,
         );
       } catch (e) {
         if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);

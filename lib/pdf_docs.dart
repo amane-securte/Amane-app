@@ -97,6 +97,9 @@ class _Letterhead {
 
   /// Pied de page : coordonnées puis bandes bleu nuit / or.
   pw.Widget footer() => pw.Column(children: [
+        pw.Text('SOCIÉTÉ AMANE SÉCURITÉ PRIVÉE – SARL au capital de 10 000 MRU · RC 131667/1597 · CNSS 1312532025 · Tevragh Zeina, Nouakchott',
+            style: const pw.TextStyle(fontSize: 7.5, color: _grey)),
+        pw.SizedBox(height: 3),
         pw.Padding(
           padding: const pw.EdgeInsets.symmetric(horizontal: 40),
           child: pw.Row(
@@ -294,6 +297,7 @@ Future<void> printPayslip({
   double monthly = 0,
   String job = '',
   List<(String, double)> lines = const [],
+  double employerCharges = 0,
 }) async {
   final doc = pw.Document(theme: await _theme());
   final lh = await _Letterhead.load();
@@ -320,8 +324,12 @@ Future<void> printPayslip({
     pw.Text(
         lines.isEmpty
             ? 'Salaire brut calculé sur les heures pointées, avant cotisations et retenues.'
-            : 'Net à payer = salaire + primes - avances - retenues - absences.',
+            : 'Net à payer = salaire + primes - avances - retenues - absences - CNSS salarié.',
         style: const pw.TextStyle(color: _grey, fontSize: 10)),
+    if (employerCharges > 0)
+      pw.Text(
+          'Charges patronales (CNSS 13 % + médecine du travail 2 %, plafond 15 000 MRU) : ${_money(employerCharges)} MRU – CNSS n° 1312532025',
+          style: const pw.TextStyle(color: _grey, fontSize: 9.5)),
     pw.SizedBox(height: 40),
     pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,

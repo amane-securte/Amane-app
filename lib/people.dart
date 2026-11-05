@@ -464,6 +464,18 @@ Future<void> editStaff(BuildContext context, T t, UserDoc u) async {
               ),
               const SizedBox(height: 6),
               Text(t('salary_hint'), style: const TextStyle(color: muted, fontSize: 12)),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: monthly,
+                builder: (_, v, __) {
+                  final m = double.tryParse(v.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+                  return m > 0 && m < smig
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(t('smig_warn'), style: const TextStyle(color: danger, fontSize: 12)),
+                        )
+                      : const SizedBox.shrink();
+                },
+              ),
             ],
           ),
         ),

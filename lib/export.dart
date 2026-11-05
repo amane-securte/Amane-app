@@ -11,7 +11,7 @@ import 'i18n.dart';
 import 'logbook.dart';
 
 /// Une ligne de paie telle que calculée dans l'onglet Comptabilité.
-typedef PayRow = (String name, String job, double hours, int shifts, double rate, double monthly, double gross, double adj, double net);
+typedef PayRow = (String name, String job, double hours, int shifts, double rate, double monthly, double gross, double adj, double cnssEmp, double net, double cnssCo);
 
 /// Une ligne de facture : (site, client, heures, tarif, montant).
 typedef InvRow = (String site, String client, double hours, double rate, double amount);
@@ -54,8 +54,8 @@ Future<void> exportMonthXlsx({
       ],
   ]);
 
-  sheet('Paie', ['Employé', 'Poste', 'Heures', 'Missions', 'Taux horaire', 'Salaire mensuel', 'Brut', 'Primes/retenues', 'Net'], [
-    for (final r in pay) [_t(r.$1), _t(r.$2), _n(r.$3), _n(r.$4), _n(r.$5), _n(r.$6), _n(r.$7), _n(r.$8), _n(r.$9)],
+  sheet('Paie', ['Employé', 'Poste', 'Heures', 'Missions', 'Taux horaire', 'Salaire mensuel', 'Brut', 'Primes/retenues', 'CNSS salarié 1 %', 'Net', 'CNSS employeur 13 % + médecine 2 %'], [
+    for (final r in pay) [_t(r.$1), _t(r.$2), _n(r.$3), _n(r.$4), _n(r.$5), _n(r.$6), _n(r.$7), _n(r.$8), _n(r.$9), _n(r.$10), _n(r.$11)],
   ]);
 
   sheet('Dépenses', ['Date', 'Catégorie', 'Libellé', 'Employé', 'Site', 'Montant'], [
