@@ -544,7 +544,7 @@ class _AdminHomeState extends State<AdminHome> {
           final parts = <String>[
             if (sh != null) t('duty_planned', {'s': sh.start, 'e': sh.end}),
             if (p != null) t('duty_in', {'t': hm(p.inAt)}),
-            if (p?.outAt != null) t('duty_out', {'t': hm(p.outAt!)}),
+            if (p != null && p.outAt != null) t('duty_out', {'t': hm(p.outAt!)}),
             if (p == null) t('duty_none'),
           ];
           final on = p != null && p.open;
