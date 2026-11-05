@@ -270,6 +270,31 @@ Future<void> printInvoice({
     pw.SizedBox(height: 16),
     pw.Text('Montant hors taxes, calculé sur les heures de présence pointées.',
         style: const pw.TextStyle(color: _grey, fontSize: 10)),
+    pw.SizedBox(height: 14),
+    // Coordonnées bancaires (RIB BIM du 22/09/2025).
+    pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: _gold, width: 0.8),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('Règlement par virement bancaire',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: _navy)),
+          pw.SizedBox(height: 4),
+          pw.Text('Titulaire : SOCIÉTÉ AMANE SÉCURITÉ PRIVÉE – SARL', style: const pw.TextStyle(fontSize: 10)),
+          pw.Text('Banque : BIM – Banque Islamique de Mauritanie, agence Siège social', style: const pw.TextStyle(fontSize: 10)),
+          pw.Text('N° de compte : 00015 00001 210 438135 01 26', style: const pw.TextStyle(fontSize: 10)),
+          pw.Text('IBAN : MR13 0001 5000 0121 0438 1350 126', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+          pw.Text('SWIFT / BIC : BIMMMRMRXXX', style: const pw.TextStyle(fontSize: 10)),
+          pw.SizedBox(height: 3),
+          pw.Text('Merci de rappeler le numéro de facture dans le libellé du virement.',
+              style: const pw.TextStyle(fontSize: 9, color: _grey)),
+        ],
+      ),
+    ),
     pw.Spacer(),
     pw.Align(
       alignment: pw.Alignment.centerRight,
