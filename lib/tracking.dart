@@ -15,16 +15,22 @@ class ShiftTracker {
   static final instance = ShiftTracker._();
 
   StreamSubscription<Position>? _sub;
+  Timer? _beat;
+  bool _mobile = false;
   String? _punchId;
   DateTime _lastWrite = DateTime.fromMillisecondsSinceEpoch(0);
 
   bool get running => _sub != null;
 
   /// Démarre (ou garde) le suivi pour ce pointage.
-  Future<void> start(String punchId, {required String title, required String text}) async {
-    if (_punchId == punchId && _sub != null) return;
+  /// [mobile] : garde du corps, agent mobile, superviseur, chauffeur. Suivi
+  /// plus serré et position renvoyée toutes les 5 min même à l'arrêt, pour
+  /// que la salle de contrôle sache toujours où il est.
+  Future<void> start(String punchId, {required String title, required String text, bool mobile = false}) async {
+    if (_punchId == punchId && _sub != null && _mobile == mobile) return;
     await stop();
     _punchId = punchId;
+    _mobile = mobile;
     try {
       if (!await Geolocator.isLocationServiceEnabled()) return;
       final perm = await Geolocator.checkPermission();
@@ -35,8 +41,8 @@ class ShiftTracker {
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
         settings = AndroidSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 50,
-          intervalDuration: const Duration(minutes: 2),
+          distanceFilter: mobile ? 25 : 50,
+          intervalDuration: Duration(minutes: mobile ? 1 : 2),
           foregroundNotificationConfig: ForegroundNotificationConfig(
             notificationTitle: title,
             notificationText: text,
@@ -45,24 +51,36 @@ class ShiftTracker {
           ),
         );
       } else {
-        settings = const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 50);
+        settings = LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: mobile ? 25 : 50);
       }
       _sub = Geolocator.getPositionStream(locationSettings: settings).listen(
         _onPosition,
         onError: (_) {},
         cancelOnError: false,
       );
+      if (mobile) {
+        _beat = Timer.periodic(const Duration(minutes: 5), (_) async {
+          if (DateTime.now().difference(_lastWrite) < const Duration(minutes: 4)) return;
+          try {
+            final p = await Geolocator.getCurrentPosition(
+                locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 30)));
+            _write(p, force: true);
+          } catch (_) {}
+        });
+      }
     } catch (_) {
       _sub = null;
     }
   }
 
-  void _onPosition(Position p) {
+  void _onPosition(Position p) => _write(p);
+
+  void _write(Position p, {bool force = false}) {
     final id = _punchId;
     if (id == null) return;
     final now = DateTime.now();
-    // Une écriture au plus toutes les 90 s pour ménager batterie et forfait.
-    if (now.difference(_lastWrite) < const Duration(seconds: 90)) return;
+    // Une écriture au plus toutes les 90 s (60 s pour les itinérants).
+    if (!force && now.difference(_lastWrite) < Duration(seconds: _mobile ? 60 : 90)) return;
     _lastWrite = now;
     db.collection('punches').doc(id).update({
       'lastLat': p.latitude,
@@ -73,6 +91,8 @@ class ShiftTracker {
   }
 
   Future<void> stop() async {
+    _beat?.cancel();
+    _beat = null;
     await _sub?.cancel();
     _sub = null;
     _punchId = null;

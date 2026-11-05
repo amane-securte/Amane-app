@@ -71,7 +71,7 @@ class _GuardHomeState extends State<GuardHome> {
   void _syncTracking(PunchDoc? open) {
     final tr = ShiftTracker.instance;
     if (open != null) {
-      tr.start(open.id, title: t('track_title'), text: t('track_text'));
+      tr.start(open.id, title: t('track_title'), text: t('track_text'), mobile: mobileJobs.contains(me.job));
     } else if (tr.running) {
       tr.stop();
     }
@@ -122,6 +122,7 @@ class _GuardHomeState extends State<GuardHome> {
         'phone': me.phone,
         'siteId': site?.id,
         'siteName': site?.name ?? '',
+        if (me.job.isNotEmpty) 'job': me.job,
         if (auto) 'autoSite': true,
         ...data,
       });
@@ -392,8 +393,8 @@ class _GuardHomeState extends State<GuardHome> {
             Text(me.name,
                 style:
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-            Text(site?.name ?? t('no_site_assigned'),
-                style: TextStyle(color: site == null ? warn : muted)),
+            Text(site?.name ?? t(mobileJobs.contains(me.job) ? 'mobile_mission' : 'no_site_assigned'),
+                style: TextStyle(color: site == null && !mobileJobs.contains(me.job) ? warn : muted)),
             const SizedBox(height: 12),
             Row(
               children: [

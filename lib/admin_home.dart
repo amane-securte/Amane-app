@@ -249,7 +249,7 @@ class _AdminHomeState extends State<AdminHome> {
                 if (alerts.isEmpty)
                   _empty(t('no_alerts'))
                 else
-                  ...alerts.map(_alertCard),
+                  ...alerts.map((a) => _alertCard(a, onDuty)),
                 const SizedBox(height: 20),
                 _h(t('on_duty_now', {'n': '${onDuty.length}'})),
                 if (onDuty.isEmpty)
@@ -354,9 +354,15 @@ class _AdminHomeState extends State<AdminHome> {
     if (go == 'call') await openUrl('tel:${a.phone}');
   }
 
-  Widget _alertCard(AlertDoc a) {
+  Widget _alertCard(AlertDoc a, [List<PunchDoc> onDuty = const []]) {
     final open = a.status == 'open';
     final f = a.fix;
+    // Agents itinérants en service les plus proches de l'alerte (renfort).
+    final near = <(PunchDoc, double)>[
+      if (f != null)
+        for (final p in onDuty)
+          if (mobileJobs.contains(p.job) && p.uid != a.uid && p.bestFix != null) (p, distanceM(f, p.bestFix!)),
+    ]..sort((x, y) => x.$2.compareTo(y.$2));
     return Card(
       color: open ? const Color(0xFFFBE9E7) : paper,
       margin: const EdgeInsets.only(bottom: 8),
@@ -406,6 +412,27 @@ class _AdminHomeState extends State<AdminHome> {
                 padding: const EdgeInsets.only(top: 4),
                 child: pill(t('act_${a.action}'), okGreen),
               ),
+            if (near.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(t('near_mobile'), style: const TextStyle(fontWeight: FontWeight.w600, color: navy)),
+              for (final (p, d) in near.take(3))
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(jobIcon(p.job), color: navy),
+                  title: Text('${p.name} · ${t('job_${p.job}')}'),
+                  subtitle: Text(t('near_km', {
+                    'k': (d / 1000).toStringAsFixed(d < 10000 ? 1 : 0),
+                    't': p.lastAt == null ? '' : hm(p.lastAt!),
+                  })),
+                  trailing: p.phone.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.phone, color: okGreen),
+                          onPressed: () => openUrl('tel:${p.phone}'),
+                        ),
+                ),
+            ],
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
