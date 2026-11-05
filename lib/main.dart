@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'accounting.dart';
 import 'admin_home.dart';
 import 'auth_screen.dart';
 import 'client_home.dart';
@@ -92,6 +93,9 @@ class RoleGate extends StatelessWidget {
         }
         if (doc.exists && needsConsent(doc.data() ?? const {}, owner: isOwner)) {
           return ConsentScreen(prefs: prefs, me: me);
+        }
+        if (!isOwner && me.role == 'admin' && me.job == 'accountant') {
+          return AccountantHome(prefs: prefs, me: me);
         }
         if (isOwner || me.role == 'admin') {
           return AdminHome(prefs: prefs, me: me, director: isOwner || me.job != 'operator');

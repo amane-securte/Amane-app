@@ -405,7 +405,8 @@ IconData jobIcon(String j) => switch (j) {
     };
 
 /// Poste, mission et salaire d'un employé (administration).
-Future<void> editStaff(BuildContext context, T t, UserDoc u) async {
+/// [salaryOnly] : le comptable ne modifie que le salaire, jamais le poste.
+Future<void> editStaff(BuildContext context, T t, UserDoc u, {bool salaryOnly = false}) async {
   double rate(DocumentSnapshot<Map<String, dynamic>> d) =>
       (d.data()?['rate'] is num) ? (d.data()!['rate'] as num).toDouble() : 0;
   var job = u.job;
@@ -428,6 +429,12 @@ Future<void> editStaff(BuildContext context, T t, UserDoc u) async {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (salaryOnly)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(t('job_$job'), style: const TextStyle(color: navy, fontWeight: FontWeight.w600)),
+                ),
+              if (!salaryOnly) ...[
               DropdownButtonFormField<String>(
                 initialValue: jobs.contains(job) ? job : 'other',
                 isExpanded: true,
@@ -450,6 +457,7 @@ Future<void> editStaff(BuildContext context, T t, UserDoc u) async {
                 maxLines: 3,
                 decoration: InputDecoration(labelText: t('mission'), hintText: t('mission_hint_$job')),
               ),
+              ],
               const SizedBox(height: 6),
               TextField(
                 controller: monthly,
@@ -490,7 +498,9 @@ Future<void> editStaff(BuildContext context, T t, UserDoc u) async {
   if (ok != true) return;
   double? num_(TextEditingController c) =>
       double.tryParse(c.text.replaceAll(RegExp(r'[^0-9.]'), ''));
-  await db.collection('users').doc(u.id).update({'job': job, 'mission': mission.text.trim()});
+  if (!salaryOnly) {
+    await db.collection('users').doc(u.id).update({'job': job, 'mission': mission.text.trim()});
+  }
   await db.collection('rates').doc('m_${u.id}').set({'rate': num_(monthly) ?? 0});
   await db.collection('rates').doc('g_${u.id}').set({'rate': num_(hourly) ?? 0});
   if (context.mounted) snack(context, t('saved'), color: okGreen);

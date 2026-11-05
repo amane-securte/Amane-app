@@ -21,8 +21,10 @@ import 'widgets.dart';
 /// uniquement par l'administration.
 class AccountingTab extends StatefulWidget {
   const AccountingTab(
-      {super.key, required this.t, required this.users, required this.sites});
+      {super.key, required this.t, required this.users, required this.sites, this.director = true});
   final T t;
+  /// false : comptable (salaires seulement, sans changer les postes).
+  final bool director;
   final List<UserDoc> users;
   final List<Site> sites;
 
@@ -296,7 +298,7 @@ class _AccountingTabState extends State<AccountingTab> {
                       }
                     },
             ),
-            OutlinedButton.icon(
+            if (widget.director) OutlinedButton.icon(
               icon: const Icon(Icons.summarize, color: danger),
               label: Text(t('monthly_report')),
               onPressed: () async {
@@ -451,7 +453,7 @@ class _AccountingTabState extends State<AccountingTab> {
                 trailing: Text((rates['m_${u.id}'] ?? 0) > 0
                     ? '${money(rates['m_${u.id}']!)} MRU/${t('per_month')}'
                     : '${money(rates['g_${u.id}'] ?? 0)} MRU/h'),
-                onTap: () => editStaff(context, t, u),
+                onTap: () => editStaff(context, t, u, salaryOnly: !widget.director),
               ),
             for (final s in widget.sites)
               ListTile(
@@ -639,7 +641,7 @@ class _AccountingTabState extends State<AccountingTab> {
     } else if (v == 'rate') {
       final u = widget.users.where((u) => u.id == uid).firstOrNull;
       if (u != null) {
-        await editStaff(context, t, u);
+        await editStaff(context, t, u, salaryOnly: !widget.director);
       } else {
         await _editRate('g_$uid', name, rate, t('hourly_pay'));
       }
@@ -859,4 +861,37 @@ class Adj {
 
   /// Positif pour une prime, négatif pour tout ce qui réduit le net.
   double get signed => kind == 'bonus' ? amount : -amount;
+}
+
+
+/// Espace du comptable : uniquement la comptabilité (paie, dépenses, factures,
+/// CNSS, exports). Ni suivi, ni SOS, ni main courante, ni messages clients.
+class AccountantHome extends StatelessWidget {
+  const AccountantHome({super.key, required this.prefs, required this.me});
+  final Prefs prefs;
+  final UserDoc me;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = T(prefs.lang);
+    return Scaffold(
+      appBar: amaneAppBar(context, prefs),
+      body: StreamBuilder<QueryMap>(
+        stream: db.collection('sites').snapshots(),
+        builder: (context, sSnap) => StreamBuilder<QueryMap>(
+          stream: db.collection('users').snapshots(),
+          builder: (context, uSnap) {
+            if (sSnap.hasError || uSnap.hasError) {
+              return Center(child: Text(t('rules_needed'), style: const TextStyle(color: danger)));
+            }
+            final sites = (sSnap.data?.docs ?? const []).map((d) => Site(d.id, d.data())).toList()
+              ..sort((a, b) => a.name.compareTo(b.name));
+            final users = (uSnap.data?.docs ?? const []).map((d) => UserDoc(d.id, d.data())).toList()
+              ..sort((a, b) => a.name.compareTo(b.name));
+            return AccountingTab(t: t, users: users, sites: sites, director: false);
+          },
+        ),
+      ),
+    );
+  }
 }

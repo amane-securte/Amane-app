@@ -85,7 +85,8 @@ Future<void> exportMonthXlsx({
     logs.addAll(q.docs.map((d) => LogDoc(d.id, d.data())));
   } catch (_) {}
   logs.sort((a, b) => a.at.compareTo(b.at));
-  sheet('Main courante', ['Date', 'Agent', 'Site', 'Type', 'Texte', 'Photos'], [
+  // Le comptable n'a pas accès à la main courante : pas de feuille vide.
+  if (logs.isNotEmpty) sheet('Main courante', ['Date', 'Agent', 'Site', 'Type', 'Texte', 'Photos'], [
     for (final l in logs)
       [_t(_dt(l.at)), _t(l.name), _t(l.siteName), _t(l.category), _t(l.text), _n(l.photos.length)],
   ]);

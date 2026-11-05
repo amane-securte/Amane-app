@@ -15,12 +15,22 @@ service cloud.firestore {
     function hasProfile() {
       return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
-    function isAdmin() { return isOwner() || (hasProfile() && profile().role == 'admin'); }
+    // Comptable (poste « accountant ») : uniquement la comptabilité.
+    function isAccountant() {
+      return !isOwner() && hasProfile() && profile().role == 'admin' && profile().get('job', '') == 'accountant';
+    }
+    // Opérations (Directeur et salle de contrôle) : tout sauf la comptabilité.
+    function isAdmin() {
+      return isOwner() || (hasProfile() && profile().role == 'admin' && profile().get('job', '') != 'accountant');
+    }
     // Directeur : tout. Le responsable de la salle de contrôle (poste « operator »)
     // voit tout sauf la comptabilité et ne gère ni le personnel ni les sites.
     function isDirector() {
-      return isOwner() || (hasProfile() && profile().role == 'admin' && profile().get('job', '') != 'operator');
+      return isOwner() || (hasProfile() && profile().role == 'admin'
+        && !(profile().get('job', '') in ['operator', 'accountant']));
     }
+    // Comptabilité : Directeur et comptable.
+    function isFinance() { return isDirector() || isAccountant(); }
     function isGuard() { return hasProfile() && profile().role in ['guard', 'admin']; }
     function isClient() { return hasProfile() && profile().role == 'client'; }
     // Superviseur : voit les sites, qui y travaille, la main courante et les SOS.
@@ -42,7 +52,7 @@ service cloud.firestore {
 
     // Comptes : chacun voit le sien, le Directeur voit et gère tout.
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin()
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin() || isAccountant()
         || (isSupervisor() && resource.data.role == 'guard'));
       allow create: if signedIn() && request.auth.uid == uid
         && (request.resource.data.role == 'pending'
@@ -59,7 +69,7 @@ service cloud.firestore {
     // Sites : l'agent ne voit que le sien ; superviseurs et agents itinérants
     // voient tous les sites ; gérés par le Directeur.
     match /sites/{id} {
-      allow read: if isAdmin() || isMobile()
+      allow read: if isAdmin() || isAccountant() || isMobile()
         || (isGuard() && id == profile().get('siteId', ''))
         || (isClient() && id == profile().siteId);
       allow write: if isDirector();
@@ -67,7 +77,7 @@ service cloud.firestore {
 
     // Pointages : chaque agent écrit et lit les siens.
     match /punches/{id} {
-      allow read: if isAdmin() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid)
+      allow read: if isAdmin() || isAccountant() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid)
         || mySite(resource.data);
       allow create: if isGuard() && request.resource.data.uid == request.auth.uid;
       // L'agent ne peut que pointer son départ (une seule fois) et envoyer sa
@@ -124,19 +134,19 @@ service cloud.firestore {
 
     // Fiches de paie publiées : l'administration et l'employé concerné seulement.
     match /payslips/{id} {
-      allow read: if isDirector() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow write: if isDirector();
+      allow read: if isFinance() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if isFinance();
     }
 
-    // Taux (salaires, tarifs, dépenses) : réservés au Directeur.
+    // Taux (salaires, tarifs, dépenses) : Directeur et comptable.
     match /rates/{id} {
-      allow read, write: if isDirector();
+      allow read, write: if isFinance();
     }
 
     // Factures envoyées au client : lecture par le client du site concerné.
     match /invoices/{id} {
-      allow read: if isDirector() || mySite(resource.data);
-      allow write: if isDirector();
+      allow read: if isFinance() || mySite(resource.data);
+      allow write: if isFinance();
     }
 
     // Alertes SOS : employés et clients actifs (pas les comptes en attente ou
