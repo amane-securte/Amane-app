@@ -10,6 +10,7 @@ import 'people.dart';
 import 'services.dart';
 import 'i18n.dart';
 import 'pdf_docs.dart';
+import 'payslips.dart';
 import 'report.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -237,6 +238,63 @@ class _AccountingTabState extends State<AccountingTab> {
                   if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
                 }
               },
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.groups, color: navy),
+              label: Text(t('payroll_register')),
+              onPressed: payRows.isEmpty
+                  ? null
+                  : () async {
+                      try {
+                        await printPayrollRegister(
+                          month: '${two(_month.month)}/${_month.year}',
+                          rows: [
+                            for (final r in payRows)
+                              (
+                                r.$2,
+                                jobsFr[_job(r.$1) ?? ''] ?? '',
+                                r.$3,
+                                r.$9,
+                                r.$6,
+                                r.$7.fold<double>(0, (s, a) => s + a.signed),
+                                r.$10,
+                                r.$8,
+                                r.$11,
+                              ),
+                          ],
+                        );
+                      } catch (e) {
+                        if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+                      }
+                    },
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.send_to_mobile, color: okGreen),
+              label: Text(t('payslips_publish_all')),
+              onPressed: payRows.isEmpty
+                  ? null
+                  : () async {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text(t('payslips_publish_all')),
+                          content: Text(t('payslips_publish_q', {'n': '${payRows.length}'})),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('cancel'))),
+                            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t('send'))),
+                          ],
+                        ),
+                      );
+                      if (ok != true) return;
+                      try {
+                        for (final r in payRows) {
+                          await _publish(r.$1, r.$2, r.$3, r.$4, r.$5, r.$9, r.$6, r.$7, r.$8, r.$10, r.$11);
+                        }
+                        if (mounted) snack(context, t('payslips_sent', {'n': '${payRows.length}'}), color: okGreen);
+                      } catch (e) {
+                        if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+                      }
+                    },
             ),
             OutlinedButton.icon(
               icon: const Icon(Icons.summarize, color: danger),
@@ -521,6 +579,24 @@ class _AccountingTabState extends State<AccountingTab> {
                 icon: const Icon(Icons.picture_as_pdf),
                 label: Text(t('pdf_payslip')),
               ),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(ctx, 'publish'),
+                    icon: const Icon(Icons.send_to_mobile, color: okGreen),
+                    label: Text(t('payslip_publish')),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(ctx, 'share'),
+                    icon: const Icon(Icons.share, color: okGreen),
+                    label: Text(t('payslip_whatsapp')),
+                  ),
+                ),
+              ]),
               TextButton.icon(
                 onPressed: () => Navigator.pop(ctx, 'rate'),
                 icon: const Icon(Icons.edit),
@@ -532,9 +608,17 @@ class _AccountingTabState extends State<AccountingTab> {
       ),
     );
     if (v == null || !mounted) return;
-    if (v == 'pdf') {
+    if (v == 'publish') {
+      try {
+        await _publish(uid, name, hours, shifts, rate, monthly, gross, adjs, net, cnssEmp, cnssCo);
+        if (mounted) snack(context, t('payslip_published', {'n': name}), color: okGreen);
+      } catch (e) {
+        if (mounted) snack(context, t('err_generic', {'e': '$e'}), color: danger);
+      }
+    } else if (v == 'pdf' || v == 'share') {
       try {
         await printPayslip(
+          share: v == 'share',
           name: name,
           phone: phone,
           month: '${two(_month.month)}/${_month.year}',
@@ -565,6 +649,30 @@ class _AccountingTabState extends State<AccountingTab> {
     } else if (v.startsWith('add:')) {
       await _addAdj(v.substring(4), uid, name, rate, monthly: monthly);
     }
+  }
+
+  /// Publie la fiche du mois dans l'espace de l'employé (« Mes fiches de paie »).
+  Future<void> _publish(String uid, String name, double hours, int shifts, double rate, double monthly,
+      double gross, List<Adj> adjs, double net, double cnssEmp, double cnssCo) {
+    final u = widget.users.where((u) => u.id == uid).firstOrNull;
+    return publishPayslip(
+      uid: uid,
+      name: name,
+      job: jobsFr[_job(uid) ?? 'guard'] ?? '',
+      phone: u?.phone ?? '',
+      month: _month,
+      hours: hours,
+      shifts: shifts,
+      rate: rate,
+      monthly: monthly,
+      gross: gross,
+      lines: [
+        for (final a in adjs) (pdfAdjLabel(a), a.signed),
+        if (cnssEmp > 0) ('Cotisation CNSS salarié (1 %)', -cnssEmp),
+      ],
+      net: net,
+      cnssCo: cnssCo,
+    );
   }
 
   /// Ajoute une avance, une retenue, une absence ou une prime pour le mois affiché.

@@ -7,6 +7,7 @@ import 'emergency.dart';
 import 'i18n.dart';
 import 'instructions.dart';
 import 'logbook.dart';
+import 'payslips.dart';
 import 'planning.dart';
 import 'tracking.dart';
 import 'theme.dart';
@@ -297,6 +298,15 @@ class _GuardHomeState extends State<GuardHome> {
             onPressed: () => openUrl('tel:$controlPhone'),
             icon: const Icon(Icons.phone),
             label: Text(t('call_control')),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => MyPayslipsScreen(t: t, me: me))),
+            icon: const Icon(Icons.receipt_long),
+            label: Text(t('my_payslips')),
           ),
         ),
         const SizedBox(height: 12),

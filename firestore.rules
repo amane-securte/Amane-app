@@ -95,6 +95,12 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Fiches de paie publiées : l'administration et l'employé concerné seulement.
+    match /payslips/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
     // Taux (salaires, tarifs) : réservés à l'administration.
     match /rates/{id} {
       allow read, write: if isAdmin();

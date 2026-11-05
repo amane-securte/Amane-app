@@ -2,6 +2,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 const _navy = PdfColor.fromInt(0xFF0F2A40);
 const _gold = PdfColor.fromInt(0xFFA9812F);
@@ -323,6 +324,8 @@ Future<void> printPayslip({
   String job = '',
   List<(String, double)> lines = const [],
   double employerCharges = 0,
+  /// true : partage du PDF (WhatsApp, e-mail…) au lieu de l'impression.
+  bool share = false,
 }) async {
   final doc = pw.Document(theme: await _theme());
   final lh = await _Letterhead.load();
@@ -367,8 +370,77 @@ Future<void> printPayslip({
       ],
     ),
   ]));
-  await Printing.layoutPdf(
-      onLayout: (_) => doc.save(), name: 'Paie-${name.replaceAll(' ', '_')}-$month.pdf');
+  final file = 'Paie-${name.replaceAll(' ', '_')}-${month.replaceAll('/', '-')}.pdf';
+  if (share) {
+    final bytes = await doc.save();
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile.fromData(bytes, name: file, mimeType: 'application/pdf')],
+      fileNameOverrides: [file],
+      text: 'AMANE – Fiche de paie $month – $name',
+    ));
+  } else {
+    await Printing.layoutPdf(onLayout: (_) => doc.save(), name: file);
+  }
+}
+
+/// État de la paie du mois : tous les employés, avec totaux (comptable, CNSS).
+/// [rows] : (nom, poste, heures, salaire mensuel, brut, primes/retenues, CNSS salarié, net, CNSS employeur).
+Future<void> printPayrollRegister({
+  required String month,
+  required List<(String, String, double, double, double, double, double, double, double)> rows,
+}) async {
+  final doc = pw.Document(theme: await _theme());
+  final lh = await _Letterhead.load();
+  double sum(double Function((String, String, double, double, double, double, double, double, double)) f) =>
+      rows.fold<double>(0, (s, r) => s + f(r));
+  String sg(double v) => v == 0 ? '' : (v < 0 ? '- ${_money(-v)}' : '+ ${_money(v)}');
+  final body = <pw.Widget>[
+    _refLine('ÉTAT DE LA PAIE', month),
+    pw.Text('CNSS n° 1312532025 · ${rows.length} employé(s)', style: const pw.TextStyle(color: _grey, fontSize: 10)),
+    pw.SizedBox(height: 8),
+    _kpis([
+      ('Brut (MRU)', _money(sum((r) => r.$5))),
+      ('Net à payer (MRU)', _money(sum((r) => r.$8))),
+      ('CNSS salariés', _money(sum((r) => r.$7))),
+      ('CNSS employeur', _money(sum((r) => r.$9))),
+    ]),
+    pw.SizedBox(height: 10),
+    pw.TableHelper.fromTextArray(
+      headers: ['Employé', 'Poste', 'Heures', 'Brut', 'Primes / retenues', 'CNSS 1 %', 'Net', 'CNSS empl. 15 %'],
+      data: [
+        for (final r in rows)
+          [r.$1, r.$2, r.$3 == 0 ? '' : _h(r.$3), _money(r.$5), sg(r.$6), _money(r.$7), _money(r.$8), _money(r.$9)],
+        ['TOTAL', '', _h(sum((r) => r.$3)), _money(sum((r) => r.$5)), sg(sum((r) => r.$6)), _money(sum((r) => r.$7)),
+          _money(sum((r) => r.$8)), _money(sum((r) => r.$9))],
+      ],
+      headerStyle: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 8.5),
+      headerDecoration: const pw.BoxDecoration(color: _navy),
+      cellStyle: const pw.TextStyle(fontSize: 8.5),
+      cellAlignments: {for (var i = 2; i < 8; i++) i: pw.Alignment.centerRight},
+      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+    ),
+    pw.SizedBox(height: 10),
+    pw.Text(
+        'Total à verser à la CNSS pour ce mois : ${_money(sum((r) => r.$7) + sum((r) => r.$9))} MRU (versement trimestriel, base plafonnée à 15 000 MRU).',
+        style: const pw.TextStyle(fontSize: 9.5)),
+    pw.SizedBox(height: 26),
+    pw.Align(
+      alignment: pw.Alignment.centerRight,
+      child: pw.Column(children: [
+        pw.Text('Le Directeur Général', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.Text('Sidi Abdella Sylla'),
+        pw.SizedBox(height: 40),
+      ]),
+    ),
+  ];
+  doc.addPage(pw.MultiPage(
+    pageTheme: pw.PageTheme(pageFormat: PdfPageFormat.a4, margin: pw.EdgeInsets.zero, buildBackground: lh.background),
+    header: (c) => pw.Padding(padding: const pw.EdgeInsets.only(bottom: 10), child: lh.header()),
+    footer: (c) => lh.footer(),
+    build: (c) => [for (final w in body) pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 30), child: w)],
+  ));
+  await Printing.layoutPdf(onLayout: (_) => doc.save(), name: 'Etat-paie-${month.replaceAll('/', '-')}.pdf');
 }
 
 String _today() {
