@@ -528,6 +528,10 @@ class _AdminHomeState extends State<AdminHome> {
                       PopupMenuItem(value: 'disable', child: Text(t('disable')))
                     else
                       PopupMenuItem(value: 'guard', child: Text(t('enable'))),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(t('delete_account'), style: const TextStyle(color: danger)),
+                    ),
                     ],
                   ],
                 ),
@@ -551,10 +555,18 @@ class _AdminHomeState extends State<AdminHome> {
                         child: ListTile(
                           title: Text(u.name),
                           subtitle: ltrText(u.phone),
-                          trailing: FilledButton(
-                            onPressed: _dir ? () => _assign(u, sites, approve: true) : null,
-                            child: Text(t('approve')),
-                          ),
+                          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                            if (_dir)
+                              IconButton(
+                                tooltip: t('delete'),
+                                icon: const Icon(Icons.delete_outline, color: danger),
+                                onPressed: () => _userAction(u, 'delete', sites),
+                              ),
+                            FilledButton(
+                              onPressed: _dir ? () => _assign(u, sites, approve: true) : null,
+                              child: Text(t('approve')),
+                            ),
+                          ]),
                         ),
                       )),
                   const SizedBox(height: 16),
@@ -642,6 +654,26 @@ class _AdminHomeState extends State<AdminHome> {
         if (mounted) await shareInvite(context, t, phone: u.phone);
       case 'disable':
         await ref.update({'role': 'disabled'});
+      case 'delete':
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.delete_forever, color: danger, size: 40),
+            title: Text(t('del_user_q', {'n': u.name})),
+            content: Text(t('del_user_hint')),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('cancel'))),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: danger),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(t('delete')),
+              ),
+            ],
+          ),
+        );
+        if (ok != true) return;
+        await ref.delete();
+        if (mounted) snack(context, t('del_user_ok', {'n': u.name}), color: okGreen);
     }
   }
 
@@ -721,6 +753,12 @@ class _AdminHomeState extends State<AdminHome> {
                     isThreeLine: s.services.isNotEmpty,
                     onTap: _dir ? () => _editSite(s) : null,
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (_dir)
+                        IconButton(
+                          tooltip: t('edit_site'),
+                          icon: const Icon(Icons.edit, color: navy),
+                          onPressed: () => _editSite(s),
+                        ),
                       IconButton(
                         tooltip: t('ins_title'),
                         icon: const Icon(Icons.assignment, color: navy),

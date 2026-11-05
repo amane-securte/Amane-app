@@ -147,7 +147,24 @@ Future<void> addPerson(BuildContext context, T t, List<Site> sites) async {
                 : await Firebase.initializeApp(name: 'adder', options: firebaseOptions);
             final a2 = FirebaseAuth.instanceFor(app: app);
             final email = loginEmail(p);
-            final cred = await a2.createUserWithEmailAndPassword(email: email, password: pw);
+            UserCredential cred;
+            try {
+              cred = await a2.createUserWithEmailAndPassword(email: email, password: pw);
+            } on FirebaseAuthException catch (e) {
+              // Compte supprimé de la liste puis ajouté de nouveau : on le
+              // reprend si le mot de passe est le même et qu'il n'a plus de fiche.
+              if (e.code != 'email-already-in-use') rethrow;
+              try {
+                cred = await a2.signInWithEmailAndPassword(email: email, password: pw);
+              } on FirebaseAuthException {
+                throw FirebaseAuthException(code: 'email-already-in-use');
+              }
+              final old = await FirebaseFirestore.instanceFor(app: app).collection('users').doc(cred.user!.uid).get();
+              if (old.exists) {
+                await a2.signOut();
+                throw FirebaseAuthException(code: 'email-already-in-use');
+              }
+            }
             final uid = cred.user!.uid;
             await cred.user!.updateDisplayName(n);
             // Le nouveau compte crée lui-même son profil « en attente »
@@ -515,12 +532,14 @@ Future<void> editInfo(BuildContext context, T t, UserDoc u, List<Site> sites) as
   final contract = TextEditingController(text: u.contractNo);
   final emergency = TextEditingController(text: u.emergency);
   final rep = TextEditingController(text: u.rep);
+  final name = TextEditingController(text: u.name);
   final v = await showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(u.name),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: name, decoration: InputDecoration(labelText: t('name'))),
           if (client)
             TextField(controller: rep, decoration: InputDecoration(labelText: t('info_rep'))),
           TextField(
@@ -561,6 +580,7 @@ Future<void> editInfo(BuildContext context, T t, UserDoc u, List<Site> sites) as
   );
   if (v == null) return;
   final data = {
+    if (name.text.trim().isNotEmpty) 'name': name.text.trim(),
     'idNo': idNo.text.trim(),
     'address': address.text.trim(),
     'contractNo': contract.text.trim(),
@@ -577,7 +597,7 @@ Future<void> editInfo(BuildContext context, T t, UserDoc u, List<Site> sites) as
   final date = '${two(now.day)}/${two(now.month)}/${now.year}';
   final fields = <(String, String)>[
     if (client) ...[
-      ('Client · الزبون', u.name),
+      ('Client · الزبون', name.text.trim()),
       ('Représentant · الممثّل', rep.text.trim()),
       ('NIF / RC · الرقم الضريبي', idNo.text.trim()),
       ('Site protégé · الموقع المحروس', site?.name ?? u.siteName),
@@ -585,7 +605,7 @@ Future<void> editInfo(BuildContext context, T t, UserDoc u, List<Site> sites) as
       ('Prestations · الخدمات', [for (final x in site?.services ?? const <String>[]) servicesFr[x] ?? x].join(', ')),
       ('Adresse · العنوان', address.text.trim()),
     ] else ...[
-      ('Nom et prénom · الاسم', u.name),
+      ('Nom et prénom · الاسم', name.text.trim()),
       ('Poste · الوظيفة', jobsFr[u.job] ?? u.job),
       ('Mission · المهمة', u.mission),
       ("N° de pièce d'identité (NNI) · رقم بطاقة التعريف", idNo.text.trim()),
