@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'consent.dart';
+import 'audit.dart';
 import 'data.dart';
 import 'geo.dart';
 import 'i18n.dart';
@@ -419,6 +420,7 @@ IconData jobIcon(String j) => switch (j) {
       'accountant' => Icons.calculate,
       'admin_staff' => Icons.business_center,
       'manager' => Icons.manage_accounts,
+      'regional_manager' => Icons.map,
       'operator' => Icons.headset_mic,
       'dg' => Icons.workspace_premium,
       _ => Icons.person,
@@ -521,6 +523,7 @@ Future<void> editStaff(BuildContext context, T t, UserDoc u, {bool salaryOnly = 
   if (!salaryOnly) {
     await db.collection('users').doc(u.id).update({'job': job, 'mission': mission.text.trim()});
   }
+  audit('salary', '${u.name} · ${num_(monthly) ?? 0} MRU');
   await db.collection('rates').doc('m_${u.id}').set({'rate': num_(monthly) ?? 0});
   await db.collection('rates').doc('g_${u.id}').set({'rate': num_(hourly) ?? 0});
   if (context.mounted) snack(context, t('saved'), color: okGreen);

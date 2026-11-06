@@ -16,6 +16,7 @@ import 'messages.dart';
 import 'notify.dart';
 import 'trips.dart';
 import 'catalog.dart';
+import 'audit.dart';
 import 'people.dart';
 import 'planning.dart';
 import 'services.dart';
@@ -524,16 +525,20 @@ class _AdminHomeState extends State<AdminHome> {
                   ),
                 if (open)
                   FilledButton(
-                    onPressed: () => db
-                        .collection('alerts')
-                        .doc(a.id)
-                        .update({'status': 'taken', 'takenAt': Timestamp.now(), 'takenBy': widget.me.name}),
+                    onPressed: () {
+                      audit('alert', '${a.name} · ${t('take')}');
+                      db
+                          .collection('alerts')
+                          .doc(a.id)
+                          .update({'status': 'taken', 'takenAt': Timestamp.now(), 'takenBy': widget.me.name});
+                    },
                     child: Text(t('take')),
                   ),
                 // Réponse : patrouille AMANE ou services publics.
                 PopupMenuButton<String>(
                   tooltip: t('respond'),
                   onSelected: (act) async {
+                    audit('alert', '${a.name} · ${t('act_$act')}');
                     await db.collection('alerts').doc(a.id).update({
                       'action': act,
                       'status': 'taken',
@@ -717,6 +722,9 @@ class _AdminHomeState extends State<AdminHome> {
                     subtitle: Text(me.founder
                         ? '${t('founder_title')}\n${t('founder_sub')}'
                         : [t('job_${me.job}'), if (me.mission.isNotEmpty) me.mission].join(' · ')),
+                    onTap: me.founder
+                        ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => AuditScreen(t: t)))
+                        : null,
                     trailing: _dir
                         ? IconButton(
                             icon: const Icon(Icons.edit),
@@ -786,14 +794,18 @@ class _AdminHomeState extends State<AdminHome> {
         await _assign(u, sites);
       case 'admin':
         await ref.update({'role': 'admin'});
+        audit('role', '${u.name} → ${t('role_admin')}');
       case 'guard':
         await ref.update({'role': 'guard'});
+        audit('role', '${u.name} → ${t('role_guard')}');
       case 'client':
         await ref.update({'role': 'client'});
+        audit('role', '${u.name} → ${t('role_client')}');
       case 'invite':
         if (mounted) await shareInvite(context, t, phone: u.phone);
       case 'disable':
         await ref.update({'role': 'disabled'});
+        audit('disable', u.name);
       case 'delete':
         final ok = await showDialog<bool>(
           context: context,
@@ -813,6 +825,7 @@ class _AdminHomeState extends State<AdminHome> {
         );
         if (ok != true) return;
         await ref.delete();
+        audit('delete', u.name);
         if (mounted) snack(context, t('del_user_ok', {'n': u.name}), color: okGreen);
     }
   }
@@ -1167,6 +1180,7 @@ class _AdminHomeState extends State<AdminHome> {
       };
       if (s == null) {
         final ref = await db.collection('sites').add(data);
+        audit('site_add', '${data['name']}');
         if (!mounted) return;
         snack(context, t('saved'), color: okGreen);
         // Nouveau site : proposer tout de suite le compte du client et l'envoi du lien.
@@ -1190,6 +1204,7 @@ class _AdminHomeState extends State<AdminHome> {
         return;
       } else {
         await db.collection('sites').doc(s.id).update(data);
+        audit('site_edit', '${data['name']}');
       }
       if (mounted) snack(context, t('saved'), color: okGreen);
     } else if (result == 'delete' && s != null && mounted) {
@@ -1208,7 +1223,10 @@ class _AdminHomeState extends State<AdminHome> {
           ],
         ),
       );
-      if (ok == true) await db.collection('sites').doc(s.id).delete();
+      if (ok == true) {
+        await db.collection('sites').doc(s.id).delete();
+        audit('site_delete', s.name);
+      }
     }
   }
 

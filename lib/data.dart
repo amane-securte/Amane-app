@@ -52,7 +52,7 @@ DateTime? _date(dynamic v) => v is Timestamp ? v.toDate() : null;
 String _str(dynamic v) => v is String ? v : '';
 
 /// Postes dans la société (indépendants des droits dans l'appli).
-const jobs = ['guard', 'mobile', 'bodyguard', 'driver', 'supervisor', 'accountant', 'admin_staff', 'manager', 'operator', 'dg', 'other'];
+const jobs = ['guard', 'mobile', 'bodyguard', 'driver', 'supervisor', 'accountant', 'admin_staff', 'manager', 'regional_manager', 'operator', 'dg', 'other'];
 
 const jobsFr = {
   'guard': 'Agent de sécurité',
@@ -64,6 +64,7 @@ const jobsFr = {
   'admin_staff': 'Employé administratif',
   'manager': 'Directeur / responsable',
   'operator': 'Responsable de la salle de contrôle',
+  'regional_manager': 'Directeur régional',
   'dg': 'Directeur Général',
   'other': 'Autre',
 };
@@ -106,7 +107,7 @@ class UserDoc {
 final siteClients = <String, String>{};
 
 /// Version affichée dans « À propos » (tenue à jour avec pubspec.yaml).
-const appVersion = '1.0.37';
+const appVersion = '1.0.38';
 
 class Site {
   Site(this.id, Map<String, dynamic> m)

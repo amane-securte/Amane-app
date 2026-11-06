@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'audit.dart';
 import 'data.dart';
 import 'i18n.dart';
 import 'pdf_docs.dart';
@@ -262,7 +263,10 @@ class ExpensesSection extends StatelessWidget {
         ],
       ),
     );
-    if (ok == true) await db.collection('rates').doc(e.id).delete();
+    if (ok == true) {
+      await db.collection('rates').doc(e.id).delete();
+      audit('expense_delete', '${e.amount.round()} MRU');
+    }
   }
 
   String get monthKey => _monthKey;
@@ -376,6 +380,7 @@ Future<void> addExpense(BuildContext context, T t, DateTime month, List<Site> si
                 return;
               }
               final s = sites.where((s) => s.id == siteId).firstOrNull;
+              audit('expense', '${t('ec_$cat')} · ${a.round()} MRU');
               await db.collection('rates').add({
                 'exp': true,
                 'cat': cat,

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'audit.dart';
 import 'data.dart';
 import 'expenses.dart';
 import 'export.dart';
@@ -741,6 +742,7 @@ class _AccountingTabState extends State<AccountingTab> {
     }
     if (value <= 0) return;
     // Rangé avec les taux : la collection est déjà réservée à l'administration.
+    audit('adj', '$name · ${t('adj_$kind')} · ${value.round()} MRU');
     await db.collection('rates').add({
       'adj': true,
       'kind': kind,
@@ -839,6 +841,7 @@ class _AccountingTabState extends State<AccountingTab> {
     );
     if (v == null || v < 0) return;
     await db.collection('rates').doc(key).set({'rate': v});
+    audit('rate', '$key · $v');
     if (mounted) snack(context, t('saved'), color: okGreen);
   }
 }

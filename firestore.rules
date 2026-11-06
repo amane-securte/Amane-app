@@ -190,6 +190,14 @@ service cloud.firestore {
       }
     }
 
+    // Journal d'activité de l'encadrement : écrit par chacun pour ses actions,
+    // lu par le Directeur Général (fondateur) seul, jamais modifié ni effacé.
+    match /audit/{id} {
+      allow read: if isOwner();
+      allow create: if (isAdmin() || isAccountant()) && request.resource.data.by == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // Messagerie client ↔ AMANE : un fil par client.
     match /messages/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.clientUid == request.auth.uid);

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'accounting.dart';
+import 'audit.dart';
 import 'admin_home.dart';
 import 'auth_screen.dart';
 import 'client_home.dart';
@@ -78,6 +79,7 @@ class RoleGate extends StatelessWidget {
         if (!snap.hasData) return const LoadingScreen();
         final doc = snap.data!;
         final me = UserDoc(user.uid, doc.data() ?? const {});
+        auditName = me.name;
         // Le fondateur est marqué comme tel sur son profil (protégé par les règles).
         if (doc.exists && isOwner && doc.data()?['founder'] != true) {
           db.collection('users').doc(user.uid).update({'founder': true, 'job': 'dg'}).catchError((_) {});
