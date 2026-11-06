@@ -75,6 +75,7 @@ class UserDoc {
         role = _str(m['role']).isEmpty ? 'pending' : _str(m['role']),
         siteName = _str(m['siteName']),
         mission = _str(m['mission']),
+        founder = m['founder'] == true,
         job = _str(m['job']).isNotEmpty
             ? _str(m['job'])
             : (_str(m['role']) == 'admin' ? 'manager' : 'guard'),
@@ -85,6 +86,8 @@ class UserDoc {
         rep = _str(m['rep']),
         consentAt = _date(m['consentAt']),
         siteId = m['siteId'] is String ? m['siteId'] as String : null;
+  /// Propriétaire et fondateur d'AMANE : tous les droits, intouchable par les autres.
+  final bool founder;
   final String id, name, phone, role, siteName;
   /// Fiche : pièce d'identité (NNI), adresse, n° de contrat,
   /// personne à prévenir (agents), représentant (clients).
@@ -101,6 +104,9 @@ class UserDoc {
 /// Nom du client de chaque site (par nom de site), rempli dès qu'un site est
 /// lu : permet d'afficher le client à côté du site dans les listes.
 final siteClients = <String, String>{};
+
+/// Version affichée dans « À propos » (tenue à jour avec pubspec.yaml).
+const appVersion = '1.0.37';
 
 class Site {
   Site(this.id, Map<String, dynamic> m)

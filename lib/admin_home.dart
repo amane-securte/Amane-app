@@ -628,7 +628,8 @@ class _AdminHomeState extends State<AdminHome> {
                 subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(
                     [
-                      if (u.role != 'client') t('job_${u.job}'),
+                      if (u.founder) t('founder_title'),
+                      if (u.role != 'client' && !u.founder) t('job_${u.job}'),
                       if (u.mission.isNotEmpty) u.mission,
                       if (u.phone.isNotEmpty) u.phone,
                       if (u.siteId != null) siteName[u.siteId] ?? '—',
@@ -636,10 +637,13 @@ class _AdminHomeState extends State<AdminHome> {
                   ),
                   if (dutyLine(u) != null) dutyLine(u)!,
                 ]),
-                leading: u.role == 'guard' || u.role == 'admin'
-                    ? Icon(jobIcon(u.job), color: u.role == 'admin' ? gold : navy)
-                    : _roleIcon(u.role),
-                trailing: PopupMenuButton<String>(
+                leading: u.founder
+                    ? const Icon(Icons.workspace_premium, color: gold)
+                    : u.role == 'guard' || u.role == 'admin'
+                        ? Icon(jobIcon(u.job), color: u.role == 'admin' ? gold : navy)
+                        : _roleIcon(u.role),
+                // Le fondateur : aucune action possible sur son compte par un autre.
+                trailing: u.founder ? const Icon(Icons.lock, color: gold, size: 20) : PopupMenuButton<String>(
                   onSelected: (v) => _userAction(u, v, sites),
                   itemBuilder: (_) => [
                     if (u.phone.isNotEmpty)
@@ -708,9 +712,11 @@ class _AdminHomeState extends State<AdminHome> {
                   color: const Color(0xFFFFF8E1),
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
-                    leading: Icon(jobIcon(me.job), color: gold),
+                    leading: Icon(me.founder ? Icons.workspace_premium : jobIcon(me.job), color: gold, size: me.founder ? 36 : 24),
                     title: Text('${me.name} · ${t('me_label')}'),
-                    subtitle: Text([t('job_${me.job}'), if (me.mission.isNotEmpty) me.mission].join(' · ')),
+                    subtitle: Text(me.founder
+                        ? '${t('founder_title')}\n${t('founder_sub')}'
+                        : [t('job_${me.job}'), if (me.mission.isNotEmpty) me.mission].join(' · ')),
                     trailing: _dir
                         ? IconButton(
                             icon: const Icon(Icons.edit),

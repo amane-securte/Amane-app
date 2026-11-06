@@ -78,6 +78,10 @@ class RoleGate extends StatelessWidget {
         if (!snap.hasData) return const LoadingScreen();
         final doc = snap.data!;
         final me = UserDoc(user.uid, doc.data() ?? const {});
+        // Le fondateur est marqué comme tel sur son profil (protégé par les règles).
+        if (doc.exists && isOwner && doc.data()?['founder'] != true) {
+          db.collection('users').doc(user.uid).update({'founder': true, 'job': 'dg'}).catchError((_) {});
+        }
         if (!doc.exists && isOwner) {
           // Premier lancement du gérant : on crée son profil administrateur.
           db.collection('users').doc(user.uid).set({

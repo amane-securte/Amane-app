@@ -58,12 +58,16 @@ service cloud.firestore {
         && (request.resource.data.role == 'pending'
             || (isOwner() && request.resource.data.role == 'admin'));
       // Un employé ne peut changer ni son rôle, ni son site, ni son poste.
-      allow update: if isDirector()
+      // Le fondateur (propriétaire) : seul lui modifie son compte ; personne ne
+      // peut se déclarer fondateur.
+      allow update: if (isOwner()
+        || (isDirector() && resource.data.get('founder', false) != true)
         || (signedIn() && request.auth.uid == uid
             && request.resource.data.role == resource.data.role
             && request.resource.data.get('siteId', null) == resource.data.get('siteId', null)
-            && request.resource.data.get('job', null) == resource.data.get('job', null));
-      allow delete: if isDirector();
+            && request.resource.data.get('job', null) == resource.data.get('job', null)))
+        && (isOwner() || request.resource.data.get('founder', false) == resource.data.get('founder', false));
+      allow delete: if isDirector() && resource.data.get('founder', false) != true;
     }
 
     // Sites : l'agent ne voit que le sien ; superviseurs et agents itinérants

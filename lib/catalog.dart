@@ -54,6 +54,32 @@ class ServicesCatalog extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 10),
+          // À propos : le fondateur et l'origine de l'application.
+          Card(
+            color: const Color(0xFF0F2A40),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(children: [
+                const Icon(Icons.workspace_premium, color: gold, size: 34),
+                const SizedBox(height: 6),
+                Text(t('about_title'),
+                    style: const TextStyle(color: Color(0xFFF7F2E7), fontWeight: FontWeight.w700, fontSize: 16)),
+                const SizedBox(height: 8),
+                Text(t('about_idea'), textAlign: TextAlign.center, style: const TextStyle(color: gold, fontSize: 13)),
+                const SizedBox(height: 4),
+                Text(t('about_founder'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFF7F2E7), fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Text(t('about_mission'),
+                    textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFDCE3EA), fontSize: 13)),
+                const SizedBox(height: 8),
+                Text(t('about_version', {'v': appVersion}),
+                    style: const TextStyle(color: Color(0xFF9FB0BF), fontSize: 12)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
             FilledButton.icon(
               onPressed: () => openUrl('tel:$controlPhone'),
