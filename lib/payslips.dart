@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'audit.dart';
 import 'data.dart';
 import 'i18n.dart';
 import 'pdf_docs.dart';
@@ -69,6 +70,7 @@ Future<void> publishPayslip({
   required double cnssCo,
 }) {
   final key = '${month.year}-${two(month.month)}';
+  audit('payslip', '$name · $key · ${net.round()} MRU');
   return db.collection('payslips').doc('${uid}_$key').set({
     'uid': uid,
     'name': name,

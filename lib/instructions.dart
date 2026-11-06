@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'audit.dart';
 import 'data.dart';
 import 'i18n.dart';
 import 'theme.dart';
@@ -367,6 +368,7 @@ class GuardInstructions extends StatelessWidget {
 Future<void> _approve(BuildContext context, T t, Instruction i) async {
   final v = await _editDialog(context, t, cur: i, admin: true);
   if (v == null) return;
+  audit('ins_ok', i.siteName);
   if (i.replaces.isNotEmpty) {
     // Mise à jour demandée par le client : on remplace l'ancienne consigne.
     await db.collection('instructions').doc(i.replaces).update({
@@ -404,6 +406,7 @@ Future<void> _reject(BuildContext context, T t, Instruction i) async {
     ),
   );
   if (ok != true) return;
+  audit('ins_no', i.siteName);
   await db.collection('instructions').doc(i.id).update({'status': 'rejected', 'adminNote': c.text.trim()});
 }
 
@@ -415,6 +418,7 @@ Widget _adminActions(BuildContext context, T t, Instruction i) => PopupMenuButto
           case 'no':
             await _reject(context, t, i);
           case 'del':
+            audit('ins_del', i.siteName);
             await db.collection('instructions').doc(i.id).delete();
         }
       },

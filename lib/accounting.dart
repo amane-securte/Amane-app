@@ -415,6 +415,7 @@ class _AccountingTabState extends State<AccountingTab> {
                 pdfLabel: t('pdf_invoice'),
                 send: () async {
                   final site = widget.sites.where((s) => s.id == r.$1).firstOrNull;
+                  audit('invoice', '${r.$2} · $no');
                   await db.collection('invoices').doc(no).set({
                     'siteId': r.$1,
                     'siteName': r.$2,
