@@ -185,12 +185,15 @@ class AlertDoc {
         action = _str(m['action']),
         note = _str(m['note']),
         gpsErr = _str(m['gpsErr']),
+        takenBy = _str(m['takenBy']),
         lateFix = m['lateFix'] == true,
         at = _date(m['at']) ?? DateTime.now(),
         fix = Fix.read(m, '');
   final String id, uid, name, phone, siteName, type, status, source, action, note;
   /// Pourquoi l'alerte est partie sans position (serviceOff, denied…).
   final String gpsErr;
+  /// Qui l'a prise en charge (plusieurs opérateurs en même temps).
+  final String takenBy;
   /// Position arrivée après l'envoi.
   final bool lateFix;
   bool get fromClient => source == 'client';

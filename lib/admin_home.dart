@@ -387,7 +387,7 @@ class _AdminHomeState extends State<AdminHome> {
       await db
           .collection('alerts')
           .doc(a.id)
-          .update({'status': 'taken', 'takenAt': Timestamp.now()});
+          .update({'status': 'taken', 'takenAt': Timestamp.now(), 'takenBy': widget.me.name});
     }
     if (go == 'map' && f != null) await openUrl(f.mapUrl);
     if (go == 'call') await openUrl('tel:${a.phone}');
@@ -467,6 +467,16 @@ class _AdminHomeState extends State<AdminHome> {
               ),
             if (f != null && a.lateFix)
               Text(t('alert_late_fix'), style: const TextStyle(color: muted, fontSize: 12)),
+            if (a.takenBy.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(children: [
+                  const Icon(Icons.how_to_reg, size: 18, color: okGreen),
+                  const SizedBox(width: 4),
+                  Text(t('taken_by', {'n': a.takenBy}),
+                      style: const TextStyle(color: okGreen, fontWeight: FontWeight.w600)),
+                ]),
+              ),
             if (near.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(t('near_mobile'), style: const TextStyle(fontWeight: FontWeight.w600, color: navy)),
@@ -517,7 +527,7 @@ class _AdminHomeState extends State<AdminHome> {
                     onPressed: () => db
                         .collection('alerts')
                         .doc(a.id)
-                        .update({'status': 'taken', 'takenAt': Timestamp.now()}),
+                        .update({'status': 'taken', 'takenAt': Timestamp.now(), 'takenBy': widget.me.name}),
                     child: Text(t('take')),
                   ),
                 // Réponse : patrouille AMANE ou services publics.
@@ -528,6 +538,7 @@ class _AdminHomeState extends State<AdminHome> {
                       'action': act,
                       'status': 'taken',
                       'actionAt': Timestamp.now(),
+                      'takenBy': widget.me.name,
                     });
                     if (act == 'police') await openUrl('tel:$policeNumber');
                     if (act == 'civil' || act == 'ambulance') await openUrl('tel:$fireNumber');

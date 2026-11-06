@@ -80,6 +80,9 @@ class ControlRoom {
     final alerts = q.docs.map((d) => AlertDoc(d.id, d.data())).toList();
     final fresh = alerts.where((a) => a.status == 'open' && !_seen.contains(a.id)).toList();
     _seen.addAll(alerts.map((a) => a.id));
+    // Plusieurs directeurs ou opérateurs : dès qu'un collègue a pris en charge
+    // toutes les alertes, la sirène s'arrête aussi sur les autres téléphones.
+    if (_loaded && alerts.every((a) => a.status != 'open')) silence();
     if (_loaded && fresh.isNotEmpty) {
       fresh.sort((a, b) => b.at.compareTo(a.at));
       ring();
