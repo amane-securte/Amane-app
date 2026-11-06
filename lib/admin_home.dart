@@ -16,6 +16,7 @@ import 'map_tab.dart';
 import 'messages.dart';
 import 'notify.dart';
 import 'trips.dart';
+import 'catalog.dart';
 import 'people.dart';
 import 'planning.dart';
 import 'services.dart';
@@ -855,6 +856,17 @@ class _AdminHomeState extends State<AdminHome> {
         ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
           children: [
+            Card(
+              color: const Color(0xFFF3EBD9),
+              child: ListTile(
+                leading: const Icon(Icons.shield, color: gold, size: 30),
+                title: Text(t('catalog_title'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(t('catalog_admin_sub')),
+                trailing: const Icon(Icons.chevron_left),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ServicesCatalog(t: t))),
+              ),
+            ),
+            const SizedBox(height: 8),
             if (sites.isEmpty) _empty(t('no_sites')),
             ...sites.map((s) => Card(
                   margin: const EdgeInsets.only(bottom: 8),
