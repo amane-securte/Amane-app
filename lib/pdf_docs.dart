@@ -236,10 +236,15 @@ Future<void> printInvoice({
   required double hours,
   required double rate,
   List<String> services = const [],
+  /// Remise en % (élèves et étudiants : 50 %).
+  int discount = 0,
+  bool student = false,
 }) async {
   final doc = pw.Document(theme: await _theme());
   final lh = await _Letterhead.load();
-  final amount = hours * rate;
+  final gross = hours * rate;
+  final off = gross * discount / 100;
+  final amount = gross - off;
   final label = services.isEmpty ? 'Prestation de gardiennage' : services.join(', ');
   doc.addPage(lh.page([
     _refLine('FACTURE', 'N° $number'),
@@ -264,7 +269,9 @@ Future<void> printInvoice({
     _table(
       ['Désignation', 'Heures', 'Tarif horaire', 'Montant'],
       [
-        ['$label – $siteName', _h(hours), _money(rate), _money(amount)],
+        ['$label – $siteName', _h(hours), _money(rate), _money(gross)],
+        if (discount > 0)
+          [student ? 'Remise élève / étudiant ($discount %)' : 'Remise ($discount %)', '', '', '- ${_money(off)}'],
       ],
       _money(amount),
     ),

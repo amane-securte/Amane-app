@@ -24,6 +24,15 @@ class ServicesCatalog extends StatelessWidget {
         children: [
           Text(t('catalog_intro'), style: const TextStyle(color: muted)),
           const SizedBox(height: 10),
+          Card(
+            color: const Color(0xFFE8F1EA),
+            child: ListTile(
+              leading: const Icon(Icons.school, color: okGreen, size: 32),
+              title: Text(t('student_offer'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(t('student_offer_sub')),
+            ),
+          ),
+          const SizedBox(height: 6),
           for (final x in services)
             Card(
               margin: const EdgeInsets.only(bottom: 8),

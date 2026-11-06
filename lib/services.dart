@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 /// Catalogue des prestations AMANE.
+/// Remise accordée aux élèves et étudiants sur l'abonnement (%).
+const studentDiscount = 50;
+
 const services = [
   'guarding', // agents de gardiennage
   'app_sub', // abonnement à l'application

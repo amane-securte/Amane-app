@@ -170,7 +170,8 @@ class _AccountingTabState extends State<AccountingTab> {
     var invTotal = 0.0;
     final invRows = bySite.entries.map((e) {
       final rate = rates['s_${e.key}'] ?? 0;
-      final amt = e.value * rate;
+      final disc = widget.sites.where((s) => s.id == e.key).firstOrNull?.discount ?? 0;
+      final amt = e.value * rate * (100 - disc) / 100;
       invTotal += amt;
       return (e.key, siteName[e.key] ?? siteFromPunch[e.key] ?? '—', e.value, rate, amt);
     }).toList()
@@ -402,6 +403,8 @@ class _AccountingTabState extends State<AccountingTab> {
                   month: '${two(_month.month)}/${_month.year}',
                   hours: r.$3,
                   rate: r.$4,
+                  discount: widget.sites.where((s) => s.id == r.$1).firstOrNull?.discount ?? 0,
+                  student: widget.sites.where((s) => s.id == r.$1).firstOrNull?.student ?? false,
                   services: [
                     for (final x in widget.sites.where((s) => s.id == r.$1).firstOrNull?.services ?? const <String>[])
                       servicesFr[x] ?? x,
@@ -419,7 +422,9 @@ class _AccountingTabState extends State<AccountingTab> {
                     'month': '${two(_month.month)}/${_month.year}',
                     'hours': double.parse(r.$3.toStringAsFixed(1)),
                     'rate': r.$4,
-                    'amount': (r.$3 * r.$4).roundToDouble(),
+                    'amount': r.$5.roundToDouble(),
+                    'discount': site?.discount ?? 0,
+                    'student': site?.student ?? false,
                     'sentAt': Timestamp.now(),
                   });
                   if (mounted) snack(context, t('invoice_sent'), color: okGreen);

@@ -359,6 +359,8 @@ class _ClientInvoicesTabState extends State<ClientInvoicesTab> {
                           month: month,
                           hours: hours,
                           rate: rate,
+                          discount: (m['discount'] is num) ? (m['discount'] as num).toInt() : 0,
+                          student: m['student'] == true,
                         );
                       } catch (e) {
                         if (context.mounted) {

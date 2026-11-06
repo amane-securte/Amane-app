@@ -113,10 +113,16 @@ class Site {
               if (x is String) x,
         ],
         fix = Fix.read(m, ''),
-        radius = m['radius'] is num ? (m['radius'] as num).toInt() : 200 {
+        radius = m['radius'] is num ? (m['radius'] as num).toInt() : 200,
+        discount = m['discount'] is num ? (m['discount'] as num).toInt().clamp(0, 100) : 0,
+        student = m['student'] == true {
     if (name.isNotEmpty) siteClients[name] = client;
   }
   final String id, name, client;
+  /// Remise sur la facture, en % (élèves et étudiants : 50 %).
+  final int discount;
+  /// Client élève ou étudiant (lycée, université).
+  final bool student;
   /// Type de site (particulier, villa, institution, banque, boutique…).
   final String type;
   /// Prestations souscrites (voir services.dart).

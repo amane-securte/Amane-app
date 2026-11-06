@@ -981,6 +981,8 @@ class _AdminHomeState extends State<AdminHome> {
     var locating = false;
     var type = s?.type ?? '';
     final svc = {...?s?.services};
+    var student = s?.student ?? false;
+    final discount = TextEditingController(text: '${s?.discount ?? 0}');
 
     final result = await showDialog<String>(
       context: context,
@@ -1031,6 +1033,23 @@ class _AdminHomeState extends State<AdminHome> {
                 TextField(
                   controller: radius,
                   decoration: InputDecoration(labelText: t('radius')),
+                  keyboardType: TextInputType.number,
+                ),
+                // Élèves (lycée) et étudiants : 50 % sur l'abonnement.
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: student,
+                  title: Text(t('student_client')),
+                  subtitle: Text(t('student_hint'), style: const TextStyle(fontSize: 12)),
+                  onChanged: (v) => setD(() {
+                    student = v ?? false;
+                    if (student && (int.tryParse(discount.text) ?? 0) == 0) discount.text = '$studentDiscount';
+                    if (!student && discount.text == '$studentDiscount') discount.text = '0';
+                  }),
+                ),
+                TextField(
+                  controller: discount,
+                  decoration: InputDecoration(labelText: t('discount_pct'), suffixText: '%'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
@@ -1123,6 +1142,8 @@ class _AdminHomeState extends State<AdminHome> {
         'name': name.text.trim(),
         'client': client.text.trim(),
         'radius': r < 20 ? 20 : r,
+        'student': student,
+        'discount': (int.tryParse(discount.text.trim()) ?? 0).clamp(0, 100),
         'Lat': f?.lat,
         'Lng': f?.lng,
         'type': type,
