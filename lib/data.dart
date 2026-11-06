@@ -138,6 +138,7 @@ class PunchDoc {
         phone = _str(m['phone']),
         siteName = _str(m['siteName']),
         job = _str(m['job']),
+        siteId = m['siteId'] is String ? m['siteId'] as String : null,
         inAt = _date(m['inAt']) ?? DateTime.now(),
         inFix = Fix.read(m, 'in'),
         inDist = m['inDist'] is num ? (m['inDist'] as num).toDouble() : null,
@@ -151,6 +152,8 @@ class PunchDoc {
   final String id, uid, name, phone, siteName;
   /// Poste de l'agent au pointage (pour repérer les itinérants).
   final String job;
+  /// Site du pointage d'arrivée (peut différer du site habituel : site détecté).
+  final String? siteId;
   /// Dernière position transmise pendant la mission (suivi continu).
   final Fix? lastFix;
   final DateTime? lastAt;

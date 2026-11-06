@@ -81,6 +81,17 @@ class _GuardHomeState extends State<GuardHome> {
     // ignore: parameter_assignments
     final r = await _locate();
     if (!mounted) return;
+    // Départ : contrôle sur le site du pointage d'arrivée (site détecté
+    // automatiquement), pas forcément sur le site habituel.
+    final sid = open?.siteId;
+    if (open != null && sid != null && sid != site?.id) {
+      try {
+        final d = await db.collection('sites').doc(sid).get();
+        final m = d.data();
+        if (m != null) site = Site(d.id, m);
+      } catch (_) {}
+      if (!mounted) return;
+    }
     var (dist, ok) = checkSite(r.fix, site);
     // Prise de service hors de son site habituel (ou sans site attribué) :
     // on cherche automatiquement le site AMANE où se trouve l'agent.
