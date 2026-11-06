@@ -98,9 +98,15 @@ class _LogbookScreenState extends State<LogbookScreen> {
   static const _maxShots = 4;
   // Agent affecté à un site : main courante du poste (lui et ses collègues).
   // Sinon (agent mobile) : ses propres entrées.
-  late final Stream<QueryMap> _mine = widget.me.siteId != null
-      ? db.collection('logs').where('siteId', isEqualTo: widget.me.siteId).snapshots()
-      : db.collection('logs').where('uid', isEqualTo: widget.me.id).snapshots();
+  // Direction et salle de contrôle : toute la main courante des 7 derniers jours.
+  late final Stream<QueryMap> _mine = widget.me.role == 'admin' && widget.me.job != 'accountant'
+      ? db
+          .collection('logs')
+          .where('at', isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 7))))
+          .snapshots()
+      : widget.me.siteId != null
+          ? db.collection('logs').where('siteId', isEqualTo: widget.me.siteId).snapshots()
+          : db.collection('logs').where('uid', isEqualTo: widget.me.id).snapshots();
 
   T get t => widget.t;
 

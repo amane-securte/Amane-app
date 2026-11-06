@@ -127,7 +127,7 @@ class _AdminHomeState extends State<AdminHome> {
             isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 1)))), (m) {
       Chime.play();
       if (mounted) {
-        snack(context, t('chime_log', {'n': s(m['name']), 's': s(m['siteName']), 'c': t('cat_${s(m['category'])}')}),
+        snack(context, t('chime_log', {'n': s(m['name']), 's': s(m['siteName']), 'c': t('cat_${s(m['category'])}'), 'x': s(m['text'])}),
             color: s(m['category']) == 'incident' ? danger : navy);
       }
     }));
