@@ -26,6 +26,7 @@ IconData needIcon(String n) => switch (n) {
       'request' => Icons.support_agent,
       'accident' => Icons.car_crash,
       'breakdown' || 'roadside' => Icons.car_repair,
+      'overdue' => Icons.timer_off,
       'assault' => Icons.front_hand,
       'intrusion' => Icons.door_front_door,
       _ => Icons.warning_amber_rounded,

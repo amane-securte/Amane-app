@@ -63,11 +63,13 @@ class _AdminHomeState extends State<AdminHome> {
   StreamSubscription<QueryMap>? _placeSub;
   StreamSubscription<AlertDoc>? _alarmSub;
   final _chimeSubs = <StreamSubscription<Object?>>[];
+  TripWatchdog? _watchdog;
 
   @override
   void dispose() {
     _placeSub?.cancel();
     _alarmSub?.cancel();
+    _watchdog?.stop();
     for (final s in _chimeSubs) {
       s.cancel();
     }
@@ -85,6 +87,8 @@ class _AdminHomeState extends State<AdminHome> {
     _alarmSub = cr.newAlerts.listen((a) {
       if (mounted) _alarm(a);
     });
+    // Trajets en retard ou sans « Je vais bien » : alerte automatique.
+    _watchdog = TripWatchdog(t)..start();
     // Son + bandeau à chaque nouveau message client et nouvelle entrée de la main courante.
     String s(Object? v) => v is String ? v : '';
     _chimeSubs.add(watchNew(db.collection('messages').where('from', isEqualTo: 'client'), (m) {

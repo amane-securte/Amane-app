@@ -153,7 +153,9 @@ service cloud.firestore {
     // désactivés) ; l'administration les traite.
     match /alerts/{id} {
       allow read: if isAdmin() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if (isGuard() || isClient()) && request.resource.data.uid == request.auth.uid
+      // La salle de contrôle crée aussi les alertes automatiques (trajet en retard).
+      allow create: if (isAdmin() && request.resource.data.source == 'auto')
+        || (isGuard() || isClient()) && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == 'open';
       // L'auteur peut seulement ajouter sa position si le GPS a répondu en retard.
       allow update: if isAdmin()
@@ -172,8 +174,16 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['lastLat', 'lastLng', 'lastAcc', 'lastAt', 'active', 'endAt']));
+                 .hasOnly(['lastLat', 'lastLng', 'lastAcc', 'lastAt', 'lastOk', 'active', 'endAt']));
       allow delete: if isAdmin();
+
+      // Parcours du trajet (points envoyés par le voyageur, même en différé).
+      match /points/{p} {
+        allow read: if isAdmin() || isSupervisor()
+          || (signedIn() && get(/databases/$(database)/documents/trips/$(id)).data.uid == request.auth.uid);
+        allow create: if signedIn()
+          && get(/databases/$(database)/documents/trips/$(id)).data.uid == request.auth.uid;
+      }
     }
 
     // Messagerie client ↔ AMANE : un fil par client.

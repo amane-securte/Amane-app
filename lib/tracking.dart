@@ -92,6 +92,17 @@ class ShiftTracker {
       'lastAcc': p.accuracy.round(),
       'lastAt': Timestamp.fromDate(now),
     }).catchError((_) {});
+    // Trajet : chaque point est aussi gardé dans le parcours. Sans réseau,
+    // Firestore les met en file d'attente et les envoie au retour du réseau
+    // (Starlink, 4G) : la salle de contrôle voit tout le chemin parcouru.
+    if (collection == 'trips') {
+      db.collection('trips').doc(id).collection('points').add({
+        'Lat': p.latitude,
+        'Lng': p.longitude,
+        'Acc': p.accuracy.round(),
+        'at': Timestamp.fromDate(now),
+      }).catchError((_) => db.collection('trips').doc(id));
+    }
   }
 
   Future<void> stop() async {
