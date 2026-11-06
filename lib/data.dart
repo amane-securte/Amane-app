@@ -107,7 +107,7 @@ class UserDoc {
 final siteClients = <String, String>{};
 
 /// Version affichée dans « À propos » (tenue à jour avec pubspec.yaml).
-const appVersion = '1.0.41';
+const appVersion = '1.0.42';
 
 class Site {
   Site(this.id, Map<String, dynamic> m)

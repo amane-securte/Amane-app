@@ -307,11 +307,16 @@ class _GuardHomeState extends State<GuardHome> {
                 disabledBackgroundColor: danger.withValues(alpha: 0.5),
                 elevation: 6,
               ),
-              child: const Text('SOS',
-                  style: TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 3)),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: FittedBox(
+                  child: Text(t('sos_btn'),
+                      style: TextStyle(
+                          fontSize: 44,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: t('sos_btn') == 'SOS' ? 3 : 0)),
+                ),
+              ),
             ),
           ),
         ),

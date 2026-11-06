@@ -1,7 +1,7 @@
 name: amane_app
 description: "Application AMANE Sécurité privée – أمان للأمن الخصوصي"
 publish_to: 'none'
-version: 1.0.41+68
+version: 1.0.42+69
 
 environment:
   sdk: '>=3.4.0 <4.0.0'

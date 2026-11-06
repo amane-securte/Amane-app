@@ -331,11 +331,16 @@ class _ClientHomeState extends State<ClientHome> {
                       ),
                       child: _busy
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('SOS',
-                              style: TextStyle(
-                                  fontSize: 46,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 3)),
+                          : Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: FittedBox(
+                                child: Text(t('sos_btn'),
+                                    style: TextStyle(
+                                        fontSize: 46,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: t('sos_btn') == 'SOS' ? 3 : 0)),
+                              ),
+                            ),
                     ),
                   ),
                 ),
