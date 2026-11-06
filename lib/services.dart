@@ -32,6 +32,7 @@ const services = [
   'valuables', // transport sécurisé d'or, de fonds et d'objets de valeur
   'transport', // transport public (bus, taxis interurbains, gares)
   'fishing', // pêcheurs, pirogues et ports de pêche
+  'kidnap', // prévention des enlèvements (expatriés, personnel minier)
   'other', // autres services
 ];
 
@@ -63,6 +64,7 @@ const servicesFr = {
   'valuables': 'Transport sécurisé d’or, de fonds et de valeurs',
   'transport': 'Sécurisation du transport public',
   'fishing': 'Sécurité des pêcheurs et des pirogues',
+  'kidnap': 'Prévention des enlèvements – expatriés et personnel minier',
   'other': 'Autres services',
 };
 
@@ -93,6 +95,7 @@ IconData serviceIcon(String s) => switch (s) {
       'valuables' => Icons.diamond,
       'transport' => Icons.directions_bus,
       'fishing' => Icons.sailing,
+      'kidnap' => Icons.shield_moon,
       _ => Icons.miscellaneous_services,
     };
 

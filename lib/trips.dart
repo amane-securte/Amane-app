@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'data.dart';
 import 'geo.dart';
+import 'silent.dart';
 import 'i18n.dart';
 import 'theme.dart';
 import 'tracking.dart';
@@ -181,6 +182,8 @@ class _TripCardState extends State<TripCard> {
   }
 
   Future<void> _ok(TripDoc trip) async {
+    if (!await SafetyCodes.confirm(context, t, widget.me, note: t('od_duress_ok', {'d': trip.to}))) return;
+    if (!mounted) return;
     setState(() => _busy = true);
     final r = await getFix(seconds: 10);
     try {
@@ -197,6 +200,8 @@ class _TripCardState extends State<TripCard> {
   }
 
   Future<void> _end(TripDoc trip) async {
+    if (!await SafetyCodes.confirm(context, t, widget.me, note: t('od_duress_end', {'d': trip.to}))) return;
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
       await db.collection('trips').doc(trip.id).update({'active': false, 'endAt': Timestamp.now()});
@@ -265,6 +270,14 @@ class _TripCardState extends State<TripCard> {
                 onPressed: _busy ? null : () => _end(trip),
                 icon: const Icon(Icons.check_circle),
                 label: Text(t('trip_arrived')),
+              ),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton.icon(
+                  onPressed: () => SafetyCodes.setup(context, t),
+                  icon: const Icon(Icons.key, size: 18),
+                  label: Text(t('codes_title')),
+                ),
               ),
             ]),
           ),

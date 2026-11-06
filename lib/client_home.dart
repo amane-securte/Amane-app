@@ -12,6 +12,7 @@ import 'client_site.dart';
 import 'messages.dart';
 import 'theme.dart';
 import 'trips.dart';
+import 'silent.dart';
 import 'catalog.dart';
 import 'widgets.dart';
 
@@ -27,6 +28,8 @@ IconData needIcon(String n) => switch (n) {
       'accident' => Icons.car_crash,
       'breakdown' || 'roadside' => Icons.car_repair,
       'overdue' => Icons.timer_off,
+      'silent' => Icons.volume_off,
+      'duress' => Icons.key,
       'assault' => Icons.front_hand,
       'intrusion' => Icons.door_front_door,
       _ => Icons.warning_amber_rounded,
@@ -278,8 +281,10 @@ class _ClientHomeState extends State<ClientHome> {
         child: StreamBuilder<QueryMap>(
           stream: _mine,
           builder: (context, snap) {
+            // Les alertes silencieuses n'apparaissent jamais sur le téléphone de l'expéditeur.
             final alerts = (snap.data?.docs ?? const [])
                 .map((d) => AlertDoc(d.id, d.data()))
+                .where((a) => a.source != 'silent')
                 .toList()
               ..sort((a, b) => b.at.compareTo(a.at));
             final active = alerts.where((a) => a.status != 'closed').toList();
@@ -297,6 +302,9 @@ class _ClientHomeState extends State<ClientHome> {
                 ),
                 // Protection aussi pendant les déplacements du client.
                 TripCard(t: t, me: me),
+                const SizedBox(height: 4),
+                SilentSosButton(t: t, me: me),
+                const SizedBox(height: 4),
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.shield, color: gold, size: 30),

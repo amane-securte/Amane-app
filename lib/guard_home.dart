@@ -10,6 +10,7 @@ import 'instructions.dart';
 import 'logbook.dart';
 import 'payslips.dart';
 import 'supervisor.dart';
+import 'silent.dart';
 import 'planning.dart';
 import 'tracking.dart';
 import 'theme.dart';
@@ -325,6 +326,8 @@ class _GuardHomeState extends State<GuardHome> {
             label: Text(t('call_control')),
           ),
         ),
+        const SizedBox(height: 8),
+        SilentSosButton(t: t, me: me),
         const SizedBox(height: 4),
         Center(
           child: TextButton.icon(
