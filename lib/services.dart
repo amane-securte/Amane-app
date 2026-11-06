@@ -15,6 +15,7 @@ const services = [
   'parties', // sécurisation de fêtes et cérémonies
   'embassies', // sécurisation d'ambassades
   'events', // sécurisation d'événements
+  'sports', // sécurisation d'événements sportifs
   'banks', // sécurisation de banques
   'homes', // sécurisation de domiciles
   'financial', // sécurisation d'agences financières
@@ -38,6 +39,7 @@ const servicesFr = {
   'festivals': 'Sécurisation de festivals',
   'parties': 'Sécurisation de fêtes et cérémonies',
   'embassies': "Sécurisation d'ambassades",
+  'sports': 'Sécurisation d’événements sportifs',
   'events': "Sécurisation d'événements",
   'banks': 'Sécurisation de banques',
   'homes': 'Sécurisation de domiciles',
@@ -69,6 +71,7 @@ IconData serviceIcon(String s) => switch (s) {
       'atm' => Icons.atm,
       'health' => Icons.local_hospital,
       'vip' => Icons.star,
+      'sports' => Icons.sports_soccer,
       'roadside' => Icons.car_repair,
       _ => Icons.miscellaneous_services,
     };
