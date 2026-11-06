@@ -28,6 +28,7 @@ const services = [
   'convoy', // escorte de convois
   'valuables', // transport sécurisé d'or, de fonds et d'objets de valeur
   'transport', // transport public (bus, taxis interurbains, gares)
+  'fishing', // pêcheurs, pirogues et ports de pêche
   'other', // autres services
 ];
 
@@ -58,6 +59,7 @@ const servicesFr = {
   'convoy': 'Escorte de convois',
   'valuables': 'Transport sécurisé d’or, de fonds et de valeurs',
   'transport': 'Sécurisation du transport public',
+  'fishing': 'Sécurité des pêcheurs et des pirogues',
   'other': 'Autres services',
 };
 
@@ -87,16 +89,18 @@ IconData serviceIcon(String s) => switch (s) {
       'convoy' => Icons.local_shipping,
       'valuables' => Icons.diamond,
       'transport' => Icons.directions_bus,
+      'fishing' => Icons.sailing,
       _ => Icons.miscellaneous_services,
     };
 
 /// Types de sites / clients.
-const siteTypes = ['office', 'individual', 'villa', 'institution', 'bank', 'agency', 'hospital', 'clinic', 'shop', 'embassy', 'event', 'mining_site', 'station', 'other'];
+const siteTypes = ['office', 'individual', 'villa', 'institution', 'bank', 'agency', 'hospital', 'clinic', 'shop', 'embassy', 'event', 'mining_site', 'station', 'port', 'other'];
 
 const siteTypesFr = {
   'office': 'Siège / bureaux AMANE',
   'mining_site': 'Site d’orpaillage / minier',
   'station': 'Gare / station de transport',
+  'port': 'Port / plage de pêche',
   'individual': 'Particulier',
   'villa': 'Villa',
   'institution': 'Institution / entreprise',
@@ -114,6 +118,7 @@ IconData siteTypeIcon(String s) => switch (s) {
       'office' => Icons.business,
       'mining_site' => Icons.landscape,
       'station' => Icons.directions_bus,
+      'port' => Icons.anchor,
       'individual' => Icons.person,
       'villa' => Icons.villa,
       'institution' => Icons.apartment,
