@@ -9,6 +9,7 @@ import 'messages.dart';
 import 'pdf_docs.dart';
 import 'planning.dart';
 import 'report.dart';
+import 'catalog.dart';
 import 'services.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -131,11 +132,19 @@ class _ClientSiteTabState extends State<ClientSiteTab> {
                               ),
                           ]),
                         const SizedBox(height: 6),
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.add_shopping_cart),
-                          label: Text(t('request_service')),
-                          onPressed: () => requestService(context, t, widget.me, mine),
-                        ),
+                        Wrap(spacing: 8, runSpacing: 6, children: [
+                          FilledButton.tonalIcon(
+                            icon: const Icon(Icons.shield),
+                            label: Text(t('catalog_title')),
+                            onPressed: () => Navigator.push(context,
+                                MaterialPageRoute(builder: (_) => ServicesCatalog(t: t, me: widget.me, mine: mine))),
+                          ),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: Text(t('request_service')),
+                            onPressed: () => requestService(context, t, widget.me, mine),
+                          ),
+                        ]),
                       ],
                     ),
                   ),

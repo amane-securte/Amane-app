@@ -574,8 +574,8 @@ class _AdminThreadPage extends StatelessWidget {
 
 
 /// Le client demande une prestation supplémentaire (devis) depuis l'appli.
-Future<void> requestService(BuildContext context, T t, UserDoc me, List<String> mine) async {
-  var pick = '';
+Future<void> requestService(BuildContext context, T t, UserDoc me, List<String> mine, {String initial = ''}) async {
+  var pick = initial;
   final note = TextEditingController();
   final ok = await showDialog<bool>(
     context: context,

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'catalog.dart';
 import 'data.dart';
 import 'i18n.dart';
 import 'theme.dart';
@@ -194,6 +195,13 @@ class _AuthScreenState extends State<AuthScreen> {
                   onPressed: _busy ? null : _forgot,
                   child: Text(t('forgot')),
                 ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.shield, color: gold),
+                label: Text(t('catalog_title')),
+                onPressed: () => Navigator.push(
+                    context, MaterialPageRoute(builder: (_) => ServicesCatalog(t: t))),
+              ),
             ],
           ),
         ),

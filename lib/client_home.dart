@@ -12,6 +12,7 @@ import 'client_site.dart';
 import 'messages.dart';
 import 'theme.dart';
 import 'trips.dart';
+import 'catalog.dart';
 import 'widgets.dart';
 
 /// Besoins qu'un client peut signaler, dans l'ordre d'affichage.
@@ -295,6 +296,16 @@ class _ClientHomeState extends State<ClientHome> {
                 ),
                 // Protection aussi pendant les déplacements du client.
                 TripCard(t: t, me: me),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.shield, color: gold, size: 30),
+                    title: Text(t('catalog_title'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(t('catalog_sub')),
+                    trailing: const Icon(Icons.chevron_left),
+                    onTap: () => Navigator.push(
+                        context, MaterialPageRoute(builder: (_) => ServicesCatalog(t: t, me: me))),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 Center(
                   child: SizedBox(
