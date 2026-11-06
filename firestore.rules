@@ -163,6 +163,19 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Trajets des clients (« Je suis en route ») : suivis par la salle de
+    // contrôle ; le client ne met à jour que sa position et la fin du trajet.
+    match /trips/{id} {
+      allow read: if isAdmin() || isSupervisor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isClient() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.active == true;
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['lastLat', 'lastLng', 'lastAcc', 'lastAt', 'active', 'endAt']));
+      allow delete: if isAdmin();
+    }
+
     // Messagerie client ↔ AMANE : un fil par client.
     match /messages/{id} {
       allow read: if isAdmin() || (signedIn() && resource.data.clientUid == request.auth.uid);

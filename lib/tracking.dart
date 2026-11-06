@@ -18,6 +18,8 @@ class ShiftTracker {
   Timer? _beat;
   bool _mobile = false;
   String? _punchId;
+  /// « punches » (service d'un agent) ou « trips » (trajet d'un client).
+  String collection = 'punches';
   DateTime _lastWrite = DateTime.fromMillisecondsSinceEpoch(0);
 
   bool get running => _sub != null;
@@ -26,10 +28,12 @@ class ShiftTracker {
   /// [mobile] : garde du corps, agent mobile, superviseur, chauffeur. Suivi
   /// plus serré et position renvoyée toutes les 5 min même à l'arrêt, pour
   /// que la salle de contrôle sache toujours où il est.
-  Future<void> start(String punchId, {required String title, required String text, bool mobile = false}) async {
+  Future<void> start(String punchId,
+      {required String title, required String text, bool mobile = false, String collection = 'punches'}) async {
     if (_punchId == punchId && _sub != null && _mobile == mobile) return;
     await stop();
     _punchId = punchId;
+    this.collection = collection;
     _mobile = mobile;
     try {
       if (!await Geolocator.isLocationServiceEnabled()) return;
@@ -82,7 +86,7 @@ class ShiftTracker {
     // Une écriture au plus toutes les 90 s (60 s pour les itinérants).
     if (!force && now.difference(_lastWrite) < Duration(seconds: _mobile ? 60 : 90)) return;
     _lastWrite = now;
-    db.collection('punches').doc(id).update({
+    db.collection(collection).doc(id).update({
       'lastLat': p.latitude,
       'lastLng': p.longitude,
       'lastAcc': p.accuracy.round(),

@@ -11,6 +11,7 @@ import 'notify.dart';
 import 'client_site.dart';
 import 'messages.dart';
 import 'theme.dart';
+import 'trips.dart';
 import 'widgets.dart';
 
 /// Besoins qu'un client peut signaler, dans l'ordre d'affichage.
@@ -292,6 +293,8 @@ class _ClientHomeState extends State<ClientHome> {
                     subtitle: Text(me.siteName.isEmpty ? t('client_space') : me.siteName),
                   ),
                 ),
+                // Protection aussi pendant les déplacements du client.
+                TripCard(t: t, me: me),
                 const SizedBox(height: 20),
                 Center(
                   child: SizedBox(

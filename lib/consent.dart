@@ -9,6 +9,8 @@ import 'widgets.dart';
 /// Version du texte de consentement : l'augmenter oblige chacun à accepter
 /// de nouveau à sa prochaine connexion.
 const consentVersion = 1;
+/// Texte client modifié (suivi pendant les trajets) : les clients acceptent de nouveau.
+const consentVersionClient = 2;
 
 /// Un paragraphe du consentement : titre + lignes.
 typedef ConsentPart = (String title, List<String> lines);
@@ -68,7 +70,7 @@ const _clientAr = <ConsentPart>[
     'يُستعمل للحالات الحقيقية فقط.',
   ]),
   ('3. البيانات والسرية', [
-    'يجمع التطبيق: الاسم والهاتف، وموقع الحراسة، والموقع الجغرافي عند SOS فقط، والرسائل والتقييمات.',
+    'يجمع التطبيق: الاسم والهاتف، وموقع الحراسة، والموقع الجغرافي عند SOS وخلال «الرحلة» التي يبدؤها الزبون بنفسه فقط، والرسائل والتقييمات.',
     'يرى الزبون موقعه فقط. السجل اليومي والتعليمات سرية بين أمان والزبون وحراس الموقع، ولا تُنشر خارج التطبيق.',
     'لا تُباع البيانات، وتُستضاف لدى Google Firebase باتصال مشفّر.',
   ]),
@@ -86,7 +88,7 @@ const _clientFr = <ConsentPart>[
     'À utiliser uniquement en cas réel.',
   ]),
   ('3. Données et confidentialité', [
-    "Collectées : nom, téléphone, site protégé, position lors d'une alerte SOS seulement, messages et évaluations.",
+    "Collectées : nom, téléphone, site protégé, position lors d'une alerte SOS et pendant un « trajet » lancé par le client lui-même, messages et évaluations.",
     "Le client ne voit que son site. Main courante et consignes sont confidentielles entre AMANE, le client et les agents du site, et ne sont pas diffusées hors de l'application.",
     'Données ni vendues ni cédées ; hébergées par Google Firebase, connexion chiffrée.',
   ]),
@@ -110,7 +112,7 @@ bool needsConsent(Map<String, dynamic> m, {bool owner = false}) {
   final role = m['role'];
   if (role != 'guard' && role != 'client' && role != 'admin') return false;
   final v = m['consentVer'];
-  return v is! num || v < consentVersion;
+  return v is! num || v < (role == 'client' ? consentVersionClient : consentVersion);
 }
 
 /// Écran d'acceptation affiché avant d'utiliser l'application.
@@ -178,7 +180,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                         setState(() => _busy = true);
                         try {
                           await db.collection('users').doc(widget.me.id).update({
-                            'consentVer': consentVersion,
+                            'consentVer': client ? consentVersionClient : consentVersion,
                             'consentAt': Timestamp.now(),
                             'consentLang': widget.prefs.lang,
                           });

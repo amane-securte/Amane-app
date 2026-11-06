@@ -15,6 +15,7 @@ import 'logbook.dart';
 import 'map_tab.dart';
 import 'messages.dart';
 import 'notify.dart';
+import 'trips.dart';
 import 'people.dart';
 import 'planning.dart';
 import 'services.dart';
@@ -112,6 +113,11 @@ class _AdminHomeState extends State<AdminHome> {
       }
       firstPunch = false;
     }, onError: (_) {}));
+    _chimeSubs.add(watchNew(activeTrips(), (m) {
+      Chime.play();
+      String s(Object? v) => v is String ? v : '';
+      if (mounted) snack(context, t('chime_trip', {'n': s(m['name']), 'd': s(m['to'])}), color: okGreen);
+    }));
     _chimeSubs.add(watchNew(
         db.collection('logs').where('at',
             isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 1)))), (m) {
@@ -278,6 +284,7 @@ class _AdminHomeState extends State<AdminHome> {
                   _empty(t('no_alerts'))
                 else
                   ...alerts.map((a) => _alertCard(a, onDuty)),
+                ActiveTrips(t: t),
                 const SizedBox(height: 20),
                 _h(t('on_duty_now', {'n': '${onDuty.length}'})),
                 if (onDuty.isEmpty)
