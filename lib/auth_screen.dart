@@ -123,6 +123,12 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               const SizedBox(height: 8),
               Center(child: Image.asset('assets/logo_full_t.png', height: 210)),
+              Padding(
+                padding: const EdgeInsets.only(top: 6, bottom: 4),
+                child: Text(t('slogan'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: gold)),
+              ),
               if (kIsWeb)
                 Card(
                   color: const Color(0xFFFFF8E1),
